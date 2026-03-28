@@ -184,6 +184,7 @@ export class StepEngine {
 
   private startOutputWatch() {
     let lastMatchedStepId: string | null = null
+    let lastErrorStepId: string | null = null
 
     const check = () => {
       const step = this.getCurrentStep()
@@ -194,10 +195,11 @@ export class StepEngine {
 
       const output = this.pty.getCleanOutput(20)
 
-      // Check for error patterns first — surface them before success
-      if (step.errorPatterns) {
+      // Check for error patterns first — surface them before success (once per step)
+      if (step.errorPatterns && lastErrorStepId !== step.id) {
         for (const errPattern of step.errorPatterns) {
           if (new RegExp(errPattern).test(output)) {
+            lastErrorStepId = step.id
             if (this.onError) {
               this.onError(errPattern, output)
             } else {

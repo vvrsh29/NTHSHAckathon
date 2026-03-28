@@ -59,10 +59,13 @@ export default function MentorPanel({
     return unsub
   }, [addListener])
 
-  // Listen for error_help → panic interceptor
+  const lastErrorIdRef = useRef<string | null>(null)
+
+  // Listen for error_help → panic interceptor (only on new error messages)
   useEffect(() => {
     const lastError = messages.filter((m) => m.messageType === 'error_help').at(-1)
-    if (lastError) {
+    if (lastError && lastError.id !== lastErrorIdRef.current) {
+      lastErrorIdRef.current = lastError.id
       setPanicMessage(lastError.content)
       setPanicVisible(true)
       setShowAutoFix(true)
