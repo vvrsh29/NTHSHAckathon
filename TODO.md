@@ -177,6 +177,108 @@ Two agents work in parallel. **Agent A** owns the backend + AI engine. **Agent B
 
 ---
 
+## PHASE 4: Intelligence Layer (ForgeFlow Integration)
+
+ForgeFlow is a sub-project that transforms a raw user idea into a structured execution plan, then feeds it into the Step Engine. It lives in `server/forgeflow/` and acts as the "brain" between the welcome screen input and the step-by-step lesson flow.
+
+**Data flow:** User idea (string) → D1 Task Parser → D2 TOML Generator → D3 Env Generator → D4 Template Mapper → D5 File Generator → D6 Step Expander → Step Engine → D7 Mode Switch controls runtime behavior
+
+### Agent A: ForgeFlow Engine
+
+- [ ] **D1. Task Parser**
+  - `server/forgeflow/task-parser.ts`
+  - Accept raw user input string (e.g. "I want to build a recipe sharing app")
+  - Call Claude API to extract structured project JSON:
+    ```json
+    {
+      "name": "recipe-sharing-app",
+      "description": "...",
+      "type": "web-app",
+      "features": ["user profiles", "recipe cards", "search"],
+      "techStack": ["html", "css", "js"],
+      "estimatedSteps": 8
+    }
+    ```
+  - Validate and sanitize output before passing downstream
+  - Emit `plan_parsed` WS message with structured plan
+
+- [ ] **D2. TOML Generator**
+  - `server/forgeflow/toml-generator.ts`
+  - Transform the parsed JSON plan into a `launch.toml` execution format
+  - `launch.toml` defines phases, step order, expected outputs, and error patterns
+  - Example output:
+    ```toml
+    [project]
+    name = "recipe-sharing-app"
+    type = "web-app"
+
+    [[phases]]
+    id = "setup"
+    steps = ["mkdir", "cd", "git-init"]
+
+    [[phases]]
+    id = "scaffold"
+    steps = ["create-index", "create-styles", "create-script"]
+    ```
+  - Write file to `~/launchpad-projects/[project-name]/launch.toml`
+  - Emit `toml_generated` WS message
+
+- [ ] **D3. Env Generator**
+  - `server/forgeflow/env-generator.ts`
+  - Scan the parsed plan for required environment variables (API keys, ports, config)
+  - Generate a `.env.example` with comments explaining each variable
+  - Write to `~/launchpad-projects/[project-name]/.env.example`
+  - If project needs no env vars, skip silently
+  - Emit `env_generated` WS message with list of required vars
+
+- [ ] **D4. Template Mapper**
+  - `server/forgeflow/template-mapper.ts`
+  - Map `project.type` from the parsed plan to a known template:
+    - `"web-app"` → portfolio/landing page template
+    - `"tool"` → utility script template
+    - `"game"` → simple canvas game template
+    - `"api"` → Express REST API template (stretch)
+  - Templates defined in `server/forgeflow/templates/` as JSON configs
+  - Return template config that D5 and D6 use to generate files and steps
+  - Fall back to a generic template if type is unrecognized
+
+- [ ] **D5. File Generator**
+  - `server/forgeflow/file-generator.ts`
+  - Given the mapped template + parsed plan, generate the starter project structure:
+    - Folder structure (e.g. `src/`, `public/`, `styles/`)
+    - Starter files (`index.html`, `style.css`, `script.js`) with placeholder content
+    - `README.md` with project name, description, and "how to run" instructions
+    - `prompts/` folder with a `system-prompt.txt` explaining the project to Claude for later generation steps
+  - Write all files to `~/launchpad-projects/[project-name]/`
+  - Emit `files_generated` WS message with file tree
+
+- [ ] **D6. Step Expander**
+  - `server/forgeflow/step-expander.ts`
+  - Convert high-level phase entries from `launch.toml` into fully executable Step objects (matching the Step interface from `server/steps/types.ts`)
+  - Each expanded step includes:
+    - `command` (exact terminal command to run)
+    - `explanation` (mentor message for this step)
+    - `expectedOutputPattern` (regex or string to detect completion)
+    - `errorPatterns` (array of known failure strings)
+  - Feed expanded steps directly into the Step Engine (replacing or augmenting the hardcoded phases)
+  - Emit `steps_expanded` WS message with full step list
+
+### Agent B: ForgeFlow UI
+
+- [ ] **D7. Mode Switch**
+  - `client/components/ModeSwitch.tsx`
+  - Toggle button in the header: **Auto** / **Tutor** mode
+  - **Tutor mode** (default): mentor explains every step before it runs, user types commands manually
+  - **Auto mode**: Step Engine runs commands automatically via PTY, mentor narrates in real time
+  - Sends `mode_change` WS message (`{ mode: "auto" | "tutor" }`) on toggle
+  - Server Step Engine and Mentor Engine respect the current mode:
+    - Tutor: send `command_suggestion`, wait for user to type
+    - Auto: write command directly to PTY, stream mentor explanation simultaneously
+  - Persist mode preference in `localStorage`
+  - Visual indicator in terminal panel showing current mode
+
+---
+
 ## HANDOFF NOTES
 
 Agent A and Agent B: leave notes here when you need something from the other side.
@@ -202,6 +304,7 @@ All packages needed (Agent A installs these in A1):
 - @anthropic-ai/sdk
 - dotenv
 - strip-ansi
+- @iarna/toml (for launch.toml generation)
 
 **Frontend:**
 - react, react-dom
