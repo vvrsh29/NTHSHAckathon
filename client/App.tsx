@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import MentorPanel from './components/MentorPanel'
 import WelcomeScreen from './components/WelcomeScreen'
+import LandingPage from './components/LandingPage'
 import StepIndicator from './components/StepIndicator'
 import ModeSwitch from './components/ModeSwitch'
 import FileTree from './components/FileTree'
@@ -16,6 +17,7 @@ import { Wifi, WifiOff, Terminal } from 'lucide-react'
 import type { ServerMessage, Phase, Step, GeneratedFile, FileTreeNode } from '../shared/types'
 
 export default function App() {
+  const [showLanding, setShowLanding] = useState(true)
   const [started, setStarted] = useState(false)
   const [currentPhase, setCurrentPhase] = useState<Phase>('setup')
   const [currentStep, setCurrentStep] = useState<Step | null>(null)
@@ -72,7 +74,17 @@ export default function App() {
 
   return (
     <AnimatePresence mode="wait">
-      {!started ? (
+      {showLanding ? (
+        <motion.div
+          key="landing"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25 }}
+        >
+          <LandingPage onGetStarted={() => setShowLanding(false)} />
+        </motion.div>
+      ) : !started ? (
         <motion.div
           key="welcome"
           initial={{ opacity: 0 }}
