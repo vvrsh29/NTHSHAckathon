@@ -302,11 +302,6 @@ wss.on('connection', (ws: WebSocket) => {
 
         case 'start_project': {
           console.log('[SERVER] start_project:', msg.description)
-          if (msg.apiKey) {
-            process.env.GEMINI_API_KEY = msg.apiKey
-            mentor.refreshClient()
-          }
-
           ;(async () => {
             try {
               send(ws, {

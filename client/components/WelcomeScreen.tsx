@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Rocket, Code2, Layout, BookOpen, Sparkles, Terminal, RotateCcw } from 'lucide-react'
 
 interface Props {
-  onStart: (description: string, apiKey?: string) => void
+  onStart: (description: string) => void
   onResume?: (projectName: string) => void
   connected: boolean
 }
@@ -17,8 +17,6 @@ const templates = [
 
 export default function WelcomeScreen({ onStart, onResume, connected }: Props) {
   const [description, setDescription] = useState('')
-  const [apiKey, setApiKey] = useState('')
-  const [showApiKey, setShowApiKey] = useState(false)
   const [sessions, setSessions] = useState<Array<{ projectName: string }>>([])
 
   useEffect(() => {
@@ -30,7 +28,7 @@ export default function WelcomeScreen({ onStart, onResume, connected }: Props) {
 
   const handleSubmit = () => {
     if (!description.trim()) return
-    onStart(description.trim(), apiKey.trim() || undefined)
+    onStart(description.trim())
   }
 
   return (
@@ -52,7 +50,8 @@ export default function WelcomeScreen({ onStart, onResume, connected }: Props) {
             <Rocket className="w-8 h-8 text-brand-400" />
           </motion.div>
           <h1 className="text-4xl font-bold text-white mb-2">LaunchPad</h1>
-          <p className="text-gray-400 text-lg">Learn to build websites with AI as your mentor</p>
+          <p className="text-gray-400 text-lg">Your first step toward AI-powered coding</p>
+          <p className="text-gray-600 text-sm mt-1">Build a real project. Learn every command. Graduate to Claude Code.</p>
         </div>
 
         {/* SSH instructions */}
@@ -143,34 +142,6 @@ export default function WelcomeScreen({ onStart, onResume, connected }: Props) {
               </button>
             ))}
           </div>
-        </div>
-
-        {/* API key */}
-        <div className="mb-8">
-          <button
-            onClick={() => setShowApiKey(!showApiKey)}
-            className="text-xs text-gray-500 hover:text-gray-300 transition"
-          >
-            {showApiKey ? '▾' : '▸'} Configure API key (optional)
-          </button>
-          {showApiKey && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              className="mt-2"
-            >
-              <p className="text-xs text-gray-500 mb-2">
-                Enter your Gemini API key for AI-powered explanations.
-              </p>
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="AIza... (optional if set in .env)"
-                className="w-full bg-surface-2 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500/50"
-              />
-            </motion.div>
-          )}
         </div>
 
         {/* Launch button */}

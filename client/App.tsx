@@ -59,8 +59,8 @@ export default function App() {
   const { send, connected, addListener } = useWebSocket(handleMessage)
   const { messages: mentorMessages, isThinking, startThinking } = useMentor(addListener)
 
-  const handleStart = useCallback((description: string, apiKey?: string) => {
-    send({ type: 'start_project', description, apiKey })
+  const handleStart = useCallback((description: string) => {
+    send({ type: 'start_project', description })
     setStarted(true)
   }, [send])
 
