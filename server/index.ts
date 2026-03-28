@@ -69,9 +69,21 @@ wss.on('connection', (ws: WebSocket) => {
   console.log('[SERVER] Client connected via WebSocket')
 
   // Create a PTY for this connection
-  const pty = new PtyManager(PROJECT_DIR, (data: string) => {
-    send(ws, { type: 'terminal_output', data })
-  })
+  let pty: PtyManager
+  try {
+    pty = new PtyManager(PROJECT_DIR, (data: string) => {
+      send(ws, { type: 'terminal_output', data })
+    })
+  } catch (err) {
+    console.error('[SERVER] Failed to spawn PTY:', err)
+    send(ws, {
+      type: 'mentor_message',
+      messageType: 'error_help',
+      content: `**Terminal failed to start.**\n\nThis usually means node-pty needs to be rebuilt for your Node.js version. Run:\n\`\`\`\nnpm rebuild node-pty\n\`\`\`\nThen restart the server.`,
+    })
+    ws.close()
+    return
+  }
 
   const mentor = new MentorEngine(ws)
   const stepEngine = new StepEngine(ws, pty, (error, output) => {
