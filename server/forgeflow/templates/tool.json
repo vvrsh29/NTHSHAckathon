@@ -1,0 +1,11 @@
+{
+  "id": "tool",
+  "name": "Web Tool",
+  "files": [
+    { "path": "index.html", "template": "html-tool" },
+    { "path": "style.css", "template": "css-base" },
+    { "path": "script.js", "template": "js-tool" }
+  ],
+  "phases": ["setup", "scaffold", "build", "style"],
+  "starterPrompt": "Build a functional web tool with HTML, CSS, and JavaScript. Focus on the core utility — clean inputs, clear outputs, immediate feedback. No frameworks."
+}

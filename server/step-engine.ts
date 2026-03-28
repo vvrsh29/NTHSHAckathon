@@ -1,5 +1,5 @@
 import type { WebSocket } from 'ws'
-import type { ServerMessage } from '../shared/types.js'
+import type { ServerMessage, Step, Phase } from '../shared/types.js'
 import type { StepEngineState, PhaseDefinition } from './steps/types.js'
 import { getSetupPhase } from './steps/setup.js'
 import { getScaffoldPhase } from './steps/scaffold.js'
@@ -38,6 +38,18 @@ export class StepEngine {
       mode: 'tutor',
       started: false,
     }
+  }
+
+  startProjectWithPhases(name: string, description: string, phases: Array<{ id: Phase; steps: Step[] }>) {
+    this.state.projectName = name
+    this.state.projectDescription = description
+    this.state.started = true
+    this.state.phases = phases
+    this.state.currentPhase = phases[0]?.id || 'setup'
+    this.state.currentStepIndex = 0
+    this.emitCurrentStep()
+    this.emitCommandSuggestion()
+    this.startOutputWatch()
   }
 
   startProject(description: string) {

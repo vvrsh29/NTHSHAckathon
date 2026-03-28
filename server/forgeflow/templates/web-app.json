@@ -1,0 +1,11 @@
+{
+  "id": "web-app",
+  "name": "Web Application",
+  "files": [
+    { "path": "index.html", "template": "html-base" },
+    { "path": "style.css", "template": "css-base" },
+    { "path": "script.js", "template": "js-base" }
+  ],
+  "phases": ["setup", "scaffold", "build", "style", "deploy"],
+  "starterPrompt": "Build a clean, modern web application with HTML, CSS, and JavaScript. Use semantic HTML5, CSS custom properties, and vanilla JS. No frameworks."
+}

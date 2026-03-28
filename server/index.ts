@@ -8,6 +8,15 @@ import type { ClientMessage, ServerMessage } from '../shared/types.js'
 import { PtyManager } from './pty-manager.js'
 import { StepEngine } from './step-engine.js'
 import { MentorEngine } from './mentor-engine.js'
+import { TaskParser } from './forgeflow/task-parser.js'
+import { TomlGenerator } from './forgeflow/toml-generator.js'
+import { EnvGenerator } from './forgeflow/env-generator.js'
+import { TemplateMapper } from './forgeflow/template-mapper.js'
+import { FileGenerator } from './forgeflow/file-generator.js'
+import { StepExpander } from './forgeflow/step-expander.js'
+import TOML from '@iarna/toml'
+import * as fs from 'fs'
+import * as path from 'path'
 
 config()
 
@@ -109,11 +118,67 @@ wss.on('connection', (ws: WebSocket) => {
             process.env.ANTHROPIC_API_KEY = msg.apiKey
             mentor.refreshClient()
           }
-          stepEngine.startProject(msg.description)
-          const state = stepEngine.getState()
-          if (state.step) {
-            mentor.explainStep(state.step, pty.getCleanOutput(10))
-          }
+
+          // Run ForgeFlow pipeline asynchronously
+          ;(async () => {
+            try {
+              send(ws, {
+                type: 'mentor_message',
+                messageType: 'encouragement',
+                content: `Got it! Let me set up your **${msg.description}** project...`,
+              })
+
+              // D1: Parse the idea into a structured plan
+              const taskParser = new TaskParser()
+              const plan = await taskParser.parse(msg.description)
+              send(ws, { type: 'plan_parsed', plan })
+              console.log('[FORGEFLOW] Plan parsed:', plan.name)
+
+              // D2: Generate launch.toml
+              const tomlGen = new TomlGenerator()
+              const tomlPath = await tomlGen.generate(plan, PROJECT_DIR)
+
+              // D3: Generate .env.example if needed
+              const envGen = new EnvGenerator()
+              const envVars = envGen.generate(plan, PROJECT_DIR)
+              if (envVars.length > 0) {
+                send(ws, { type: 'env_generated', vars: envVars })
+              }
+
+              // D4: Map to template
+              const templateMapper = new TemplateMapper()
+              const template = templateMapper.map(plan)
+
+              // D5: Generate starter files
+              const fileGen = new FileGenerator()
+              const files = await fileGen.generate(plan, template, PROJECT_DIR)
+              send(ws, { type: 'files_generated', files })
+              console.log('[FORGEFLOW] Files generated:', files)
+
+              // D6: Expand steps from launch.toml
+              const tomlContent = fs.readFileSync(tomlPath, 'utf8')
+              const toml = TOML.parse(tomlContent) as any
+              const stepExpander = new StepExpander()
+              const steps = stepExpander.expand(toml, plan)
+              const phases = stepExpander.toPhaseDefinitions(steps)
+              send(ws, { type: 'steps_expanded', steps })
+
+              // Start the step engine with ForgeFlow phases
+              stepEngine.startProjectWithPhases(plan.name, plan.description, phases)
+              const state = stepEngine.getState()
+              if (state.step) {
+                mentor.explainStep(state.step, pty.getCleanOutput(10))
+              }
+            } catch (err) {
+              console.error('[FORGEFLOW] Pipeline error:', err)
+              // Fallback to simple step engine
+              stepEngine.startProject(msg.description)
+              const state = stepEngine.getState()
+              if (state.step) {
+                mentor.explainStep(state.step, pty.getCleanOutput(10))
+              }
+            }
+          })()
           break
         }
 

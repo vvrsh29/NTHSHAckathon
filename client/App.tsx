@@ -6,6 +6,7 @@ import TerminalPanel from './components/TerminalPanel'
 import MentorPanel from './components/MentorPanel'
 import WelcomeScreen from './components/WelcomeScreen'
 import StepIndicator from './components/StepIndicator'
+import ModeSwitch from './components/ModeSwitch'
 import type { ServerMessage, Phase, Step, GeneratedFile } from '../shared/types'
 
 export default function App() {
@@ -73,6 +74,7 @@ export default function App() {
                   <span className="text-xs text-yellow-400">Reconnecting...</span>
                 </span>
               )}
+              <ModeSwitch send={send} />
             </div>
             <StepIndicator currentPhase={currentPhase} stepIndex={stepIndex} />
           </div>
