@@ -15,42 +15,53 @@ export function useWebSocket(onMessage: (msg: ServerMessage) => void) {
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
     const host = window.location.hostname
-    // In dev, Vite proxies /ws to backend. In prod, same origin.
     const url = `${protocol}://${host}:${window.location.port}/ws`
 
-    const ws = new WebSocket(url)
-    wsRef.current = ws
+    let retryTimer: ReturnType<typeof setTimeout> | null = null
+    let destroyed = false
 
-    ws.onopen = () => {
-      console.log('[WS] Connected')
-      setConnected(true)
-    }
+    function connect() {
+      if (destroyed) return
+      const ws = new WebSocket(url)
+      wsRef.current = ws
 
-    ws.onmessage = (ev) => {
-      try {
-        const msg: ServerMessage = JSON.parse(ev.data)
-        onMessage(msg)
-        listenersRef.current.forEach((fn) => fn(msg))
-        // Dispatch as window event for decoupled components
-        window.dispatchEvent(new CustomEvent('ws-message', { detail: msg }))
-      } catch (err) {
-        console.error('[WS] Parse error:', err)
+      ws.onopen = () => {
+        console.log('[WS] Connected')
+        setConnected(true)
+      }
+
+      ws.onmessage = (ev) => {
+        try {
+          const msg: ServerMessage = JSON.parse(ev.data)
+          onMessage(msg)
+          listenersRef.current.forEach((fn) => fn(msg))
+          window.dispatchEvent(new CustomEvent('ws-message', { detail: msg }))
+        } catch (err) {
+          console.error('[WS] Parse error:', err)
+        }
+      }
+
+      ws.onclose = () => {
+        console.log('[WS] Disconnected — retrying in 2s')
+        setConnected(false)
+        if (!destroyed) {
+          retryTimer = setTimeout(connect, 2000)
+        }
+      }
+
+      ws.onerror = () => {
+        // onclose fires after onerror, retry handled there
       }
     }
 
-    ws.onclose = () => {
-      console.log('[WS] Disconnected')
-      setConnected(false)
-    }
-
-    ws.onerror = (err) => {
-      console.error('[WS] Error:', err)
-    }
+    connect()
 
     return () => {
-      ws.close()
+      destroyed = true
+      if (retryTimer) clearTimeout(retryTimer)
+      wsRef.current?.close()
     }
-  }, [onMessage])
+  }, [])
 
   const send = useCallback((msg: ClientMessage) => {
     const ws = wsRef.current
