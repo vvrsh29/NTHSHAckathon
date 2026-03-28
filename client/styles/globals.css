@@ -56,6 +56,10 @@
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Lock scroll only when the dashboard is active */
+body.dashboard-active {
   overflow: hidden;
 }
 

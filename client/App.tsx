@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useWebSocket } from './hooks/useWebSocket'
 import { useMentor } from './hooks/useMentor'
@@ -26,6 +26,10 @@ export default function App() {
   const [projectName, setProjectName] = useState<string | undefined>()
 
   const { tree, newPaths, updateTree } = useFileTree(projectName)
+
+  useEffect(() => {
+    document.body.classList.toggle('dashboard-active', started)
+  }, [started])
 
   const handleMessage = useCallback((msg: ServerMessage) => {
     switch (msg.type) {
