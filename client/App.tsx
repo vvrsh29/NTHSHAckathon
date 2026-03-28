@@ -4,7 +4,7 @@ import TerminalPanel from './components/TerminalPanel'
 import MentorPanel from './components/MentorPanel'
 import WelcomeScreen from './components/WelcomeScreen'
 import StepIndicator from './components/StepIndicator'
-import type { ServerMessage, Phase, Step } from '../shared/types'
+import type { ServerMessage, Phase, Step, GeneratedFile } from '../shared/types'
 
 export default function App() {
   const [started, setStarted] = useState(false)
@@ -12,6 +12,7 @@ export default function App() {
   const [currentStep, setCurrentStep] = useState<Step | null>(null)
   const [stepIndex, setStepIndex] = useState(0)
   const [commandSuggestion, setCommandSuggestion] = useState<{ command: string; explanation: string } | null>(null)
+  const [generatedFiles, setGeneratedFiles] = useState<{ files: GeneratedFile[]; explanation: string } | null>(null)
 
   const handleMessage = useCallback((msg: ServerMessage) => {
     switch (msg.type) {
@@ -22,6 +23,9 @@ export default function App() {
         break
       case 'command_suggestion':
         setCommandSuggestion({ command: msg.command, explanation: msg.explanation })
+        break
+      case 'code_generated':
+        setGeneratedFiles({ files: msg.files, explanation: msg.explanation })
         break
     }
   }, [])
@@ -70,6 +74,7 @@ export default function App() {
               send={send}
               currentStep={currentStep}
               commandSuggestion={commandSuggestion}
+              generatedFiles={generatedFiles}
             />
           </div>
         </div>

@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { MessageCircle, Sparkles, AlertTriangle, BookOpen } from 'lucide-react'
-import type { ClientMessage, Step, MentorMessageType, ServerMessage } from '../../shared/types'
+import type { ClientMessage, Step, GeneratedFile, MentorMessageType, ServerMessage } from '../../shared/types'
+import CommandPrompt from './CommandPrompt'
+import CodeExplainer from './CodeExplainer'
 
 interface MentorMsg {
   id: string
@@ -14,6 +16,7 @@ interface Props {
   send: (msg: ClientMessage) => void
   currentStep: Step | null
   commandSuggestion: { command: string; explanation: string } | null
+  generatedFiles?: { files: GeneratedFile[]; explanation: string } | null
 }
 
 const iconMap: Record<MentorMessageType, any> = {
@@ -30,7 +33,7 @@ const colorMap: Record<MentorMessageType, string> = {
   error_help: 'border-amber-500/30 bg-amber-500/5',
 }
 
-export default function MentorPanel({ send, currentStep, commandSuggestion }: Props) {
+export default function MentorPanel({ send, currentStep, commandSuggestion, generatedFiles }: Props) {
   const [messages, setMessages] = useState<MentorMsg[]>([])
   const [question, setQuestion] = useState('')
   const [asking, setAsking] = useState(false)
@@ -83,21 +86,12 @@ export default function MentorPanel({ send, currentStep, commandSuggestion }: Pr
 
         {/* Command suggestion */}
         {commandSuggestion && (
-          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4 mb-4">
-            <p className="text-xs text-emerald-400 uppercase tracking-wide mb-2">Type this command:</p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 bg-black/40 text-emerald-300 px-3 py-2 rounded font-mono text-sm">
-                {commandSuggestion.command}
-              </code>
-              <button
-                className="px-2 py-1 text-xs bg-emerald-500/20 text-emerald-300 rounded hover:bg-emerald-500/30 transition"
-                onClick={() => navigator.clipboard.writeText(commandSuggestion.command)}
-              >
-                Copy
-              </button>
-            </div>
-            <p className="text-gray-400 text-xs mt-2">{commandSuggestion.explanation}</p>
-          </div>
+          <CommandPrompt command={commandSuggestion.command} explanation={commandSuggestion.explanation} />
+        )}
+
+        {/* Generated code files */}
+        {generatedFiles && (
+          <CodeExplainer files={generatedFiles.files} explanation={generatedFiles.explanation} />
         )}
 
         {/* Message bubbles */}
