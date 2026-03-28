@@ -1,9 +1,10 @@
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Rocket, Code2, Layout, BookOpen, Sparkles } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Rocket, Code2, Layout, BookOpen, Sparkles, Terminal, RotateCcw } from 'lucide-react'
 
 interface Props {
   onStart: (description: string, apiKey?: string) => void
+  onResume?: (projectName: string) => void
   connected: boolean
 }
 
@@ -14,10 +15,18 @@ const templates = [
   { icon: Sparkles, label: 'To-Do App', description: 'An interactive to-do list with add and delete' },
 ]
 
-export default function WelcomeScreen({ onStart, connected }: Props) {
+export default function WelcomeScreen({ onStart, onResume, connected }: Props) {
   const [description, setDescription] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [showApiKey, setShowApiKey] = useState(false)
+  const [sessions, setSessions] = useState<Array<{ projectName: string }>>([])
+
+  useEffect(() => {
+    fetch('/api/sessions')
+      .then((r) => r.json())
+      .then(setSessions)
+      .catch(() => {})
+  }, [])
 
   const handleSubmit = () => {
     if (!description.trim()) return
@@ -32,7 +41,7 @@ export default function WelcomeScreen({ onStart, connected }: Props) {
         transition={{ duration: 0.6 }}
         className="max-w-2xl w-full"
       >
-        {/* Logo / Title */}
+        {/* Logo */}
         <div className="text-center mb-10">
           <motion.div
             initial={{ scale: 0 }}
@@ -43,10 +52,62 @@ export default function WelcomeScreen({ onStart, connected }: Props) {
             <Rocket className="w-8 h-8 text-brand-400" />
           </motion.div>
           <h1 className="text-4xl font-bold text-white mb-2">LaunchPad</h1>
-          <p className="text-gray-400 text-lg">
-            Learn to build websites with AI as your mentor
-          </p>
+          <p className="text-gray-400 text-lg">Learn to build websites with AI as your mentor</p>
         </div>
+
+        {/* SSH instructions */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="mb-6 rounded-xl border border-purple-500/20 bg-purple-500/5 p-4"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <Terminal className="w-4 h-4 text-purple-400" />
+            <span className="text-xs font-medium text-purple-400 uppercase tracking-wide">Step 1 — Open your terminal</span>
+          </div>
+          <p className="text-gray-300 text-sm mb-2">
+            Open a terminal on your computer and connect:
+          </p>
+          <code className="block bg-black/40 text-purple-200 px-4 py-2 rounded-lg font-mono text-sm border border-purple-500/10">
+            ssh localhost -p 2222
+          </code>
+          <p className="text-xs text-gray-500 mt-2">
+            Keep that window open — your AI mentor will watch what you type.
+          </p>
+        </motion.div>
+
+        {/* Resume sessions */}
+        <AnimatePresence>
+          {sessions.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-6"
+            >
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Resume a project:</p>
+              <div className="space-y-2">
+                {sessions.map((s) => (
+                  <button
+                    key={s.projectName}
+                    onClick={() => onResume?.(s.projectName)}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-white/5 bg-surface-1 hover:border-brand-500/30 hover:bg-surface-2 transition text-left"
+                  >
+                    <RotateCcw className="w-4 h-4 text-brand-400 flex-shrink-0" />
+                    <div>
+                      <div className="text-sm font-medium text-gray-200">{s.projectName}</div>
+                      <div className="text-xs text-gray-500">Continue where you left off</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <div className="mt-4 border-t border-white/5 pt-4">
+                <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Or start something new:</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Description input */}
         <div className="mb-6">
@@ -64,7 +125,7 @@ export default function WelcomeScreen({ onStart, connected }: Props) {
           />
         </div>
 
-        {/* Template suggestions */}
+        {/* Templates */}
         <div className="mb-8">
           <p className="text-xs text-gray-500 uppercase tracking-wide mb-3">Or pick a template:</p>
           <div className="grid grid-cols-2 gap-3">
@@ -84,7 +145,7 @@ export default function WelcomeScreen({ onStart, connected }: Props) {
           </div>
         </div>
 
-        {/* API key (optional) */}
+        {/* API key */}
         <div className="mb-8">
           <button
             onClick={() => setShowApiKey(!showApiKey)}
@@ -99,7 +160,7 @@ export default function WelcomeScreen({ onStart, connected }: Props) {
               className="mt-2"
             >
               <p className="text-xs text-gray-500 mb-2">
-                Enter your Anthropic API key for AI-powered explanations. Without it, you'll get built-in explanations.
+                Enter your Anthropic API key for AI-powered explanations.
               </p>
               <input
                 type="password"
@@ -112,7 +173,7 @@ export default function WelcomeScreen({ onStart, connected }: Props) {
           )}
         </div>
 
-        {/* Start button */}
+        {/* Launch button */}
         <motion.button
           whileHover={{ scale: connected ? 1.02 : 1 }}
           whileTap={{ scale: connected ? 0.98 : 1 }}

@@ -4,8 +4,8 @@ export type { Phase, Step }
 
 export interface PhaseDefinition {
   id: Phase
-  title: string
-  description: string
+  title?: string
+  description?: string
   steps: Step[]
 }
 

@@ -1,12 +1,15 @@
 import type { WebSocket } from 'ws'
 import type { ServerMessage, Step, Phase } from '../shared/types.js'
 import type { StepEngineState, PhaseDefinition } from './steps/types.js'
+
+export interface OutputProvider {
+  getCleanOutput(maxLines: number): string
+}
 import { getSetupPhase } from './steps/setup.js'
 import { getScaffoldPhase } from './steps/scaffold.js'
 import { getBuildPhase } from './steps/build.js'
 import { getStylePhase } from './steps/style.js'
 import { getDeployPhase } from './steps/deploy.js'
-import { PtyManager } from './pty-manager.js'
 
 function send(ws: WebSocket, msg: ServerMessage) {
   if (ws.readyState === ws.OPEN) {
@@ -17,18 +20,22 @@ function send(ws: WebSocket, msg: ServerMessage) {
 export class StepEngine {
   private state: StepEngineState
   private ws: WebSocket
-  private pty: PtyManager
+  private pty: OutputProvider
   private outputCheckTimer: ReturnType<typeof setTimeout> | null = null
   private onError?: (error: string, terminalOutput: string) => void
+  private onPhaseComplete?: (phase: Phase) => void
+  private failureCounts: Map<string, number> = new Map()
 
   constructor(
     ws: WebSocket,
-    pty: PtyManager,
-    onError?: (error: string, terminalOutput: string) => void
+    pty: OutputProvider,
+    onError?: (error: string, terminalOutput: string) => void,
+    onPhaseComplete?: (phase: Phase) => void
   ) {
     this.ws = ws
     this.pty = pty
     this.onError = onError
+    this.onPhaseComplete = onPhaseComplete
     this.state = {
       currentPhase: 'setup',
       currentStepIndex: 0,
@@ -90,6 +97,11 @@ export class StepEngine {
     if (this.state.currentStepIndex < phase.steps.length - 1) {
       this.state.currentStepIndex++
     } else {
+      // Phase complete — emit event for confetti
+      const completedPhase = this.state.currentPhase
+      send(this.ws, { type: 'phase_complete', phase: completedPhase })
+      this.onPhaseComplete?.(completedPhase)
+
       // Move to next phase
       const phaseIndex = this.state.phases.findIndex((p) => p.id === this.state.currentPhase)
       if (phaseIndex < this.state.phases.length - 1) {
@@ -97,6 +109,7 @@ export class StepEngine {
         this.state.currentStepIndex = 0
       } else {
         // All done!
+        send(this.ws, { type: 'phase_complete', phase: completedPhase })
         send(this.ws, {
           type: 'mentor_message',
           messageType: 'encouragement',
@@ -108,6 +121,21 @@ export class StepEngine {
 
     this.emitCurrentStep()
     this.emitCommandSuggestion()
+  }
+
+  getFailureCount(stepId: string): number {
+    return this.failureCounts.get(stepId) || 0
+  }
+
+  incrementFailure(stepId: string) {
+    this.failureCounts.set(stepId, (this.failureCounts.get(stepId) || 0) + 1)
+  }
+
+  runCurrentCommand(runFn: (command: string) => void) {
+    const step = this.getCurrentStep()
+    if (step?.command) {
+      runFn(step.command)
+    }
   }
 
   setMode(mode: 'auto' | 'tutor') {

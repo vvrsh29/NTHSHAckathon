@@ -11,6 +11,9 @@ export type ClientMessage =
   | { type: 'next_step' }
   | { type: 'mentor_question'; question: string }
   | { type: 'mode_change'; mode: 'auto' | 'tutor' }
+  | { type: 'ghost_type'; command: string }
+  | { type: 'resume_project'; projectName: string }
+  | { type: 'auto_fix' }
 
 // --- Server → Client ---
 
@@ -25,6 +28,10 @@ export type ServerMessage =
   | { type: 'env_generated'; vars: string[] }
   | { type: 'files_generated'; files: string[] }
   | { type: 'steps_expanded'; steps: Step[] }
+  | { type: 'ssh_status'; connected: boolean }
+  | { type: 'file_tree'; tree: FileTreeNode[] }
+  | { type: 'phase_complete'; phase: Phase }
+  | { type: 'session_found'; projectName: string }
 
 // --- Enums / Subtypes ---
 
@@ -55,4 +62,11 @@ export interface ParsedPlan {
   features: string[]
   techStack: string[]
   estimatedSteps: number
+}
+
+export interface FileTreeNode {
+  name: string
+  type: 'file' | 'directory'
+  path: string
+  children?: FileTreeNode[]
 }

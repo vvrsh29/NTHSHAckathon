@@ -24,9 +24,13 @@ export function useMentor(addListener: (fn: (msg: ServerMessage) => void) => () 
         setMessages((prev) => {
           // If streaming, update the last message of same type
           if (msg.streaming) {
-            const lastIdx = prev.findLastIndex(
-              (m) => m.messageType === msg.messageType && m.streaming
-            )
+            let lastIdx = -1
+            for (let i = prev.length - 1; i >= 0; i--) {
+              if (prev[i].messageType === msg.messageType && prev[i].streaming) {
+                lastIdx = i
+                break
+              }
+            }
             if (lastIdx >= 0) {
               const updated = [...prev]
               updated[lastIdx] = {
