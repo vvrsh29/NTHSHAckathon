@@ -1,24 +1,14 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AlertCircle, ArrowRight, Wrench, X, Bot, ChevronRight } from 'lucide-react'
 import confetti from 'canvas-confetti'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
-import type { ClientMessage, Step, GeneratedFile, MentorMessageType, Phase, ServerMessage } from '../../shared/types'
+import type { ClientMessage, Step, MentorMessageType, Phase, ServerMessage } from '../../shared/types'
 import type { MentorMessage } from '../hooks/useMentor'
 import CommandPrompt from './CommandPrompt'
-import CodeExplainer from './CodeExplainer'
-
-const badgeVariant: Record<MentorMessageType, string> = {
-  explanation: 'bg-transparent border-border text-muted-foreground',
-  instruction: 'bg-transparent border-border text-blue-600 dark:text-blue-400',
-  encouragement: 'bg-transparent border-border text-emerald-600 dark:text-emerald-400',
-  error_help: 'bg-transparent border-border text-destructive',
-}
 
 const labelText: Record<MentorMessageType, string> = {
   explanation: 'Mentor',
@@ -32,7 +22,6 @@ interface Props {
   addListener: (fn: (msg: ServerMessage) => void) => () => void
   currentStep: Step | null
   commandSuggestion: { command: string; explanation: string } | null
-  generatedFiles?: { files: GeneratedFile[]; explanation: string } | null
   messages: MentorMessage[]
   isThinking: boolean
   onStartThinking: () => void
@@ -43,7 +32,6 @@ export default function MentorPanel({
   addListener,
   currentStep,
   commandSuggestion,
-  generatedFiles,
   messages,
   isThinking,
   onStartThinking,
@@ -52,6 +40,7 @@ export default function MentorPanel({
   const [panicVisible, setPanicVisible] = useState(false)
   const [panicMessage, setPanicMessage] = useState('')
   const [showAutoFix, setShowAutoFix] = useState(false)
+  const [waitingForNext, setWaitingForNext] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const lastErrorIdRef = useRef<string | null>(null)
 
@@ -73,9 +62,16 @@ export default function MentorPanel({
   }, [messages])
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
+    setWaitingForNext(!!currentStep && !isThinking)
+  }, [currentStep, isThinking])
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+      }
+    })
+    return () => cancelAnimationFrame(frame)
   }, [messages, isThinking])
 
   const handleAsk = () => {
@@ -86,6 +82,7 @@ export default function MentorPanel({
   }
 
   const handleNextStep = () => {
+    setWaitingForNext(false)
     send({ type: 'next_step' } as any)
     onStartThinking()
   }
@@ -97,7 +94,7 @@ export default function MentorPanel({
     onStartThinking()
   }
 
-  const hasContent = messages.length > 0 || currentStep || commandSuggestion || generatedFiles
+  const hasContent = messages.length > 0 || currentStep || commandSuggestion
 
   return (
     <div className="flex flex-col h-full relative">
@@ -178,10 +175,6 @@ export default function MentorPanel({
           />
         )}
 
-        {generatedFiles && (
-          <CodeExplainer files={generatedFiles.files} explanation={generatedFiles.explanation} />
-        )}
-
         {/* Message feed */}
         {messages.map((msg, i) => (
           <div key={msg.id} className="space-y-1.5">
@@ -224,20 +217,12 @@ export default function MentorPanel({
 
       {/* Bottom bar */}
       <div className="flex-none border-t p-3 space-y-2 bg-background">
-        <div className="flex gap-2">
-          {currentStep && (
-            <Button size="sm" onClick={handleNextStep} className="flex-1 h-8 text-xs gap-1.5">
-              Next step
-              <ArrowRight className="w-3 h-3" />
-            </Button>
-          )}
-          {showAutoFix && (
-            <Button size="sm" variant="destructive" onClick={handleAutoFix} className="h-8 text-xs gap-1.5">
-              <Wrench className="w-3 h-3" />
-              Auto-Fix
-            </Button>
-          )}
-        </div>
+        {currentStep && (
+          <Button variant="default" onClick={handleNextStep} className={cn("w-full gap-2", waitingForNext && "animate-pulse")}>
+            Next step
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        )}
         <div className="flex gap-2">
           <input
             type="text"

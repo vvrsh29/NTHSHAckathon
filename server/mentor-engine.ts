@@ -1,21 +1,14 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import Anthropic from '@anthropic-ai/sdk'
 import type { WebSocket } from 'ws'
-import type { ServerMessage, Step, Phase } from '../shared/types.js'
+import type { ServerMessage, MentorMessageType, Step, Phase } from '../shared/types.js'
 
-const MENTOR_SYSTEM_PROMPT = `You are LaunchPad's AI mentor — a warm, encouraging coding teacher for complete beginners.
-
-Your student is building their very first website. They may never have used a terminal before.
-
+const MENTOR_SYSTEM_PROMPT = `You are LaunchPad's AI mentor helping beginners learn Claude Code.
 Rules:
-- Use plain language always. No jargon without a friendly explanation.
-- Use analogies: terminal = "a text conversation with your computer", directory = "folder", npm = "app store for code".
-- Keep explanations to 2-4 sentences. Be concise but warm.
-- Use markdown: **bold** for key terms, \`backticks\` for commands and code.
-- Every response should feel encouraging. Learning is hard and every win matters.
-- For errors: always (1) what went wrong, (2) why it happens, (3) exactly how to fix it.
-- Never be condescending. The student is smart — coding is just new to them.
-- You are teaching HTML, CSS, and JavaScript. No frameworks, no TypeScript. Keep it simple.
-- When a step completes successfully, celebrate it! "Nice work!" "You just did something real!"`
+- 1-2 sentences MAX. Be terse.
+- Use **bold** for key terms, \`backticks\` for commands
+- Never repeat what's already shown in the step explanation
+- Celebrate wins briefly
+- Use the user's name occasionally if provided`
 
 function send(ws: WebSocket, msg: ServerMessage) {
   if (ws.readyState === ws.OPEN) {
@@ -23,13 +16,12 @@ function send(ws: WebSocket, msg: ServerMessage) {
   }
 }
 
-function getApiKey() {
-  return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || ''
-}
-
 export class MentorEngine {
-  private genAI: GoogleGenerativeAI | null = null
+  private client: Anthropic | null = null
   private ws: WebSocket
+  private userName = ''
+  private queue: Array<() => Promise<void>> = []
+  private processing = false
 
   constructor(ws: WebSocket) {
     this.ws = ws
@@ -37,9 +29,11 @@ export class MentorEngine {
   }
 
   private initClient() {
-    const apiKey = getApiKey()
+    const apiKey = process.env.ANTHROPIC_API_KEY
     if (apiKey) {
-      this.genAI = new GoogleGenerativeAI(apiKey)
+      this.client = new Anthropic({ apiKey })
+    } else {
+      this.client = null
     }
   }
 
@@ -47,8 +41,69 @@ export class MentorEngine {
     this.initClient()
   }
 
+  setUserName(name: string) {
+    this.userName = name
+  }
+
+  private async enqueue(fn: () => Promise<void>) {
+    this.queue.push(fn)
+    if (this.processing) return
+    this.processing = true
+    while (this.queue.length > 0) {
+      const next = this.queue.shift()!
+      await next()
+    }
+    this.processing = false
+  }
+
+  private async streamResponse(systemPrompt: string, userPrompt: string, messageType: MentorMessageType) {
+    if (!this.client) {
+      // Fallback — no API key available
+      send(this.ws, {
+        type: 'mentor_message',
+        messageType,
+        content: userPrompt,
+        streaming: false,
+      })
+      return
+    }
+
+    try {
+      const finalSystemPrompt = this.userName
+        ? `${systemPrompt}\nThe user's name is ${this.userName}.`
+        : systemPrompt
+
+      const stream = this.client.messages.stream({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 256,
+        system: finalSystemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+      })
+
+      for await (const event of stream) {
+        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+          send(this.ws, {
+            type: 'mentor_message',
+            messageType,
+            content: event.delta.text,
+            streaming: true,
+          })
+        }
+      }
+      send(this.ws, { type: 'mentor_message', messageType, content: '', streaming: false })
+    } catch (err) {
+      console.error('[MENTOR] Anthropic error:', err)
+      send(this.ws, {
+        type: 'mentor_message',
+        messageType,
+        content: '*(AI mentor is temporarily unavailable — using built-in explanation)*',
+        streaming: false,
+      })
+    }
+  }
+
   async explainStep(step: Step, terminalOutput: string) {
-    if (!this.genAI) {
+    if (!this.client) {
       send(this.ws, {
         type: 'mentor_message',
         messageType: 'instruction',
@@ -57,13 +112,7 @@ export class MentorEngine {
       return
     }
 
-    try {
-      const model = this.genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash',
-        systemInstruction: MENTOR_SYSTEM_PROMPT,
-      })
-
-      const prompt = `The student is on step "${step.title}" (phase: ${step.phase}).
+    const userPrompt = `The student is on step "${step.title}" (phase: ${step.phase}).
 Step explanation: ${step.explanation}
 ${step.command ? `Command to type: \`${step.command}\`` : ''}
 Recent terminal output:
@@ -73,32 +122,11 @@ ${terminalOutput.slice(-500)}
 
 Give a friendly, concise explanation of this step. If the terminal shows something notable, mention it.`
 
-      const result = await model.generateContentStream(prompt)
-
-      for await (const chunk of result.stream) {
-        const text = chunk.text()
-        if (text) {
-          send(this.ws, {
-            type: 'mentor_message',
-            messageType: 'explanation',
-            content: text,
-            streaming: true,
-          })
-        }
-      }
-      send(this.ws, { type: 'mentor_message', messageType: 'explanation', content: '', streaming: false })
-    } catch (err) {
-      console.error('[MENTOR] Gemini error:', err)
-      send(this.ws, {
-        type: 'mentor_message',
-        messageType: 'explanation',
-        content: step.explanation + '\n\n*(AI mentor is temporarily unavailable — using built-in explanation)*',
-      })
-    }
+    await this.enqueue(() => this.streamResponse(MENTOR_SYSTEM_PROMPT, userPrompt, 'explanation'))
   }
 
   async explainError(error: string, terminalOutput: string) {
-    if (!this.genAI) {
+    if (!this.client) {
       send(this.ws, {
         type: 'mentor_message',
         messageType: 'error_help',
@@ -107,14 +135,7 @@ Give a friendly, concise explanation of this step. If the terminal shows somethi
       return
     }
 
-    try {
-      const model = this.genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash',
-        systemInstruction: MENTOR_SYSTEM_PROMPT,
-      })
-
-      const result = await model.generateContentStream(
-        `The student got an error in the terminal. Help them understand what happened and how to fix it.
+    const userPrompt = `The student got an error in the terminal. Help them understand what happened and how to fix it.
 
 Error detected: ${error}
 
@@ -124,43 +145,21 @@ ${terminalOutput.slice(-800)}
 \`\`\`
 
 Explain the error warmly, tell them what went wrong and how to fix it.`
-      )
 
-      for await (const chunk of result.stream) {
-        const text = chunk.text()
-        if (text) {
-          send(this.ws, { type: 'mentor_message', messageType: 'error_help', content: text, streaming: true })
-        }
-      }
-      send(this.ws, { type: 'mentor_message', messageType: 'error_help', content: '', streaming: false })
-    } catch (err) {
-      console.error('[MENTOR] Gemini error:', err)
-      send(this.ws, {
-        type: 'mentor_message',
-        messageType: 'error_help',
-        content: `Something went wrong: \`${error}\`. Don't worry — errors happen all the time! Check for typos in your command and try again.`,
-      })
-    }
+    await this.enqueue(() => this.streamResponse(MENTOR_SYSTEM_PROMPT, userPrompt, 'error_help'))
   }
 
   async answerQuestion(question: string, context: { phase: Phase; step: Step | null; terminalOutput: string }) {
-    if (!this.genAI) {
+    if (!this.client) {
       send(this.ws, {
         type: 'mentor_message',
         messageType: 'explanation',
-        content: `Great question! Unfortunately, the AI mentor needs a Gemini API key to answer questions. Add your GEMINI_API_KEY to get personalized answers.`,
+        content: `Great question! Unfortunately, the AI mentor needs an Anthropic API key to answer questions. Add your ANTHROPIC_API_KEY to get personalized answers.`,
       })
       return
     }
 
-    try {
-      const model = this.genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash',
-        systemInstruction: MENTOR_SYSTEM_PROMPT,
-      })
-
-      const result = await model.generateContentStream(
-        `The student is in the "${context.phase}" phase${context.step ? `, on step "${context.step.title}"` : ''}.
+    const userPrompt = `The student is in the "${context.phase}" phase${context.step ? `, on step "${context.step.title}"` : ''}.
 
 Recent terminal output:
 \`\`\`
@@ -170,22 +169,7 @@ ${context.terminalOutput.slice(-500)}
 Their question: "${question}"
 
 Answer their question clearly and encouragingly. Use examples if it helps.`
-      )
 
-      for await (const chunk of result.stream) {
-        const text = chunk.text()
-        if (text) {
-          send(this.ws, { type: 'mentor_message', messageType: 'explanation', content: text, streaming: true })
-        }
-      }
-      send(this.ws, { type: 'mentor_message', messageType: 'explanation', content: '', streaming: false })
-    } catch (err) {
-      console.error('[MENTOR] Gemini error:', err)
-      send(this.ws, {
-        type: 'mentor_message',
-        messageType: 'explanation',
-        content: `I had trouble connecting to the AI. Here's a tip: try searching your question online — sites like MDN Web Docs are great for learning web development!`,
-      })
-    }
+    await this.enqueue(() => this.streamResponse(MENTOR_SYSTEM_PROMPT, userPrompt, 'explanation'))
   }
 }

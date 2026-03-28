@@ -5,25 +5,21 @@ import { config } from 'dotenv'
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
-import TOML from '@iarna/toml'
-import type { ClientMessage, ServerMessage, FileTreeNode } from '../shared/types.js'
+import type { ClientMessage, ServerMessage } from '../shared/types.js'
 import { SSHManager } from './ssh-manager.js'
+import { DirectPtyManager } from './direct-pty-manager.js'
 import { StepEngine } from './step-engine.js'
 import { MentorEngine } from './mentor-engine.js'
-import { TaskParser } from './forgeflow/task-parser.js'
-import { TomlGenerator } from './forgeflow/toml-generator.js'
-import { EnvGenerator } from './forgeflow/env-generator.js'
-import { TemplateMapper } from './forgeflow/template-mapper.js'
-import { FileGenerator } from './forgeflow/file-generator.js'
-import { StepExpander } from './forgeflow/step-expander.js'
+import { detectEnvironment } from './env-detector.js'
+import { loadCourse } from './courses/course-loader.js'
 
 config()
 
-const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
-if (!geminiKey) {
-  console.warn('[SERVER] ⚠️  GEMINI_API_KEY not set — AI mentor will use fallback responses')
+const anthropicKey = process.env.ANTHROPIC_API_KEY
+if (!anthropicKey) {
+  console.warn('[SERVER] ANTHROPIC_API_KEY not set — AI mentor will use fallback responses')
 } else {
-  console.log('[SERVER] ✓ Gemini API key loaded')
+  console.log('[SERVER] Anthropic API key loaded')
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -57,60 +53,18 @@ app.get('/api/health', (_req, res) => {
 
 app.get('/api/demo', (_req, res) => {
   res.json({
-    description: 'portfolio website',
-    hint: 'A personal portfolio site with your name, bio, and projects section',
+    description: 'Claude Code tutorial',
+    hint: 'Learn to use Claude Code, Anthropic\'s AI coding assistant',
   })
 })
 
-// File tree endpoint
-app.get('/api/file-tree', (req, res) => {
-  const projectName = req.query.project as string | undefined
-  const dir = projectName ? path.join(PROJECT_DIR, projectName) : PROJECT_DIR
-
-  function buildTree(dirPath: string, depth = 0): FileTreeNode[] {
-    if (depth > 4) return []
-    try {
-      const entries = fs.readdirSync(dirPath, { withFileTypes: true })
-      return entries
-        .filter((e) => !e.name.startsWith('.') && e.name !== 'node_modules')
-        .map((e) => {
-          const fullPath = path.join(dirPath, e.name)
-          const relativePath = path.relative(PROJECT_DIR, fullPath)
-          if (e.isDirectory()) {
-            return {
-              name: e.name,
-              type: 'directory' as const,
-              path: relativePath,
-              children: buildTree(fullPath, depth + 1),
-            }
-          }
-          return { name: e.name, type: 'file' as const, path: relativePath }
-        })
-    } catch {
-      return []
-    }
-  }
-
-  if (!fs.existsSync(dir)) {
-    return res.json([])
-  }
-  res.json(buildTree(dir))
-})
-
-// Sessions endpoint — scan for launch.toml files
-app.get('/api/sessions', (_req, res) => {
-  const sessions: Array<{ projectName: string; path: string }> = []
+app.get('/api/env', async (_req, res) => {
   try {
-    const entries = fs.readdirSync(PROJECT_DIR, { withFileTypes: true })
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue
-      const tomlPath = path.join(PROJECT_DIR, entry.name, 'launch.toml')
-      if (fs.existsSync(tomlPath)) {
-        sessions.push({ projectName: entry.name, path: tomlPath })
-      }
-    }
-  } catch {}
-  res.json(sessions)
+    const results = await detectEnvironment()
+    res.json(results)
+  } catch {
+    res.status(500).json({ error: 'Environment detection failed' })
+  }
 })
 
 // Catch-all: in dev redirect to Vite, in prod serve index.html
@@ -162,71 +116,26 @@ sshManager.onStatus((connected) => {
   broadcast({ type: 'ssh_status', connected })
 })
 
-// Periodically broadcast file tree while SSH is connected
-let fileTreeTimer: ReturnType<typeof setInterval> | null = null
-
-sshManager.onStatus((connected) => {
-  if (connected) {
-    fileTreeTimer = setInterval(() => {
-      // Build tree and broadcast
-      function buildTree(dirPath: string, depth = 0): FileTreeNode[] {
-        if (depth > 4) return []
-        try {
-          const entries = fs.readdirSync(dirPath, { withFileTypes: true })
-          return entries
-            .filter((e) => !e.name.startsWith('.') && e.name !== 'node_modules')
-            .map((e) => {
-              const fullPath = path.join(dirPath, e.name)
-              const relativePath = path.relative(PROJECT_DIR, fullPath)
-              if (e.isDirectory()) {
-                return {
-                  name: e.name,
-                  type: 'directory' as const,
-                  path: relativePath,
-                  children: buildTree(fullPath, depth + 1),
-                }
-              }
-              return { name: e.name, type: 'file' as const, path: relativePath }
-            })
-        } catch {
-          return []
-        }
-      }
-      if (fs.existsSync(PROJECT_DIR)) {
-        broadcast({ type: 'file_tree', tree: buildTree(PROJECT_DIR) })
-      }
-    }, 3000)
-  } else {
-    if (fileTreeTimer) {
-      clearInterval(fileTreeTimer)
-      fileTreeTimer = null
-    }
-  }
-})
-
 wss.on('connection', (ws: WebSocket) => {
   console.log('[SERVER] Client connected via WebSocket')
 
   // Send current SSH status immediately
   send(ws, { type: 'ssh_status', connected: sshManager.isConnected() })
 
-  // Check for existing sessions on connect
-  try {
-    const entries = fs.readdirSync(PROJECT_DIR, { withFileTypes: true })
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue
-      const tomlPath = path.join(PROJECT_DIR, entry.name, 'launch.toml')
-      if (fs.existsSync(tomlPath)) {
-        send(ws, { type: 'session_found', projectName: entry.name })
-        break // send first match
-      }
-    }
-  } catch {}
-
   const mentor = new MentorEngine(ws)
+
+  // Direct PTY for in-browser terminal
+  const directPty = new DirectPtyManager((msg) => send(ws, msg))
+
+  // Output provider — uses direct PTY if alive, otherwise SSH
+  function getOutputProvider() {
+    if (directPty.isAlive) return { getCleanOutput: (n: number) => directPty.getCleanOutput(n) }
+    return { getCleanOutput: (n: number) => sshManager.getCleanOutput(n) }
+  }
+
   const stepEngine = new StepEngine(
     ws,
-    { getCleanOutput: (n) => sshManager.getCleanOutput(n) },
+    getOutputProvider(),
     (error, output) => {
       mentor.explainError(error, output)
       // Increment failure count for current step
@@ -237,14 +146,14 @@ wss.on('connection', (ws: WebSocket) => {
           send(ws, {
             type: 'mentor_message',
             messageType: 'error_help',
-            content: '⚠️ Looks like this step is giving you trouble. Click **Auto-Fix** and I\'ll run the fix for you.',
+            content: 'Looks like this step is giving you trouble. Click **Auto-Fix** and I\'ll run the fix for you.',
           })
         }
       }
     },
     (phase) => {
       console.log('[SERVER] Phase complete:', phase)
-    }
+    },
   )
 
   ws.on('message', (raw: Buffer) => {
@@ -252,6 +161,70 @@ wss.on('connection', (ws: WebSocket) => {
       const msg: ClientMessage = JSON.parse(raw.toString())
 
       switch (msg.type) {
+        case 'select_course': {
+          ;(async () => {
+            try {
+              const env = await detectEnvironment()
+              send(ws, { type: 'env_detection', results: env })
+
+              const phases = loadCourse(msg.level, env)
+              send(ws, { type: 'course_started', level: msg.level, phases })
+
+              if (msg.apiKey) {
+                process.env.ANTHROPIC_API_KEY = msg.apiKey
+                mentor.refreshClient()
+              }
+
+              if (msg.userName) {
+                mentor.setUserName(msg.userName)
+              }
+
+              // Spawn direct PTY for in-browser terminal
+              if (!directPty.isAlive) {
+                directPty.spawn(msg.apiKey)
+              }
+
+              // Update step engine's output provider to use direct PTY
+              stepEngine.setOutputProvider(getOutputProvider())
+
+              // Delay starting the course to let PTY initialize
+              setTimeout(() => {
+                stepEngine.startCourse(msg.level, phases)
+
+                // Explain the first step — only for steps with a command
+                const state = stepEngine.getState()
+                if (state?.step?.command) {
+                  mentor.explainStep(state.step, directPty.getCleanOutput(10))
+                }
+              }, 500)
+            } catch (err) {
+              console.error('[SERVER] Failed to start course:', err)
+              send(ws, {
+                type: 'mentor_message',
+                messageType: 'error_help',
+                content: 'Something went wrong starting the course. Please try again.',
+              })
+            }
+          })()
+          break
+        }
+
+        case 'set_api_key': {
+          process.env.ANTHROPIC_API_KEY = msg.apiKey
+          mentor.refreshClient()
+          break
+        }
+
+        case 'pty_input': {
+          directPty.write(msg.data)
+          break
+        }
+
+        case 'pty_resize': {
+          directPty.resize(msg.cols, msg.rows)
+          break
+        }
+
         case 'terminal_input':
           sshManager.runCommand(msg.data.replace(/\r?\n$/, ''))
           break
@@ -261,115 +234,43 @@ wss.on('connection', (ws: WebSocket) => {
           break
 
         case 'ghost_type':
-          sshManager.ghostType(msg.command)
+          if (directPty.isAlive) {
+            directPty.ghostType(msg.command)
+          } else {
+            sshManager.ghostType(msg.command)
+          }
           break
 
         case 'auto_fix': {
-          stepEngine.runCurrentCommand((cmd) => sshManager.runCommand(cmd))
-          break
-        }
-
-        case 'resume_project': {
-          const tomlPath = path.join(PROJECT_DIR, msg.projectName, 'launch.toml')
-          if (fs.existsSync(tomlPath)) {
-            try {
-              const tomlContent = fs.readFileSync(tomlPath, 'utf8')
-              const toml = TOML.parse(tomlContent) as any
-              const taskParser = new TaskParser()
-              const plan = {
-                name: msg.projectName,
-                description: toml.description || msg.projectName,
-                type: toml.type || 'website',
-                features: toml.features || [],
-                techStack: toml.techStack || [],
-                estimatedSteps: 20,
-              }
-              const stepExpander = new StepExpander()
-              const steps = stepExpander.expand(toml, plan)
-              const phases = stepExpander.toPhaseDefinitions(steps)
-              stepEngine.startProjectWithPhases(plan.name, plan.description, phases)
-              const state = stepEngine.getState()
-              if (state.step) mentor.explainStep(state.step, sshManager.getCleanOutput(10))
-            } catch (err) {
-              console.error('[SERVER] Failed to resume project:', err)
-              stepEngine.startProject(msg.projectName)
-            }
+          if (directPty.isAlive) {
+            stepEngine.runCurrentCommand((cmd) => directPty.runCommand(cmd))
           } else {
-            stepEngine.startProject(msg.projectName)
+            stepEngine.runCurrentCommand((cmd) => sshManager.runCommand(cmd))
           }
-          break
-        }
-
-        case 'start_project': {
-          console.log('[SERVER] start_project:', msg.description)
-          ;(async () => {
-            try {
-              send(ws, {
-                type: 'mentor_message',
-                messageType: 'encouragement',
-                content: `Got it! Let me set up your **${msg.description}** project...`,
-              })
-
-              const taskParser = new TaskParser()
-              const plan = await taskParser.parse(msg.description)
-              send(ws, { type: 'plan_parsed', plan })
-              console.log('[FORGEFLOW] Plan parsed:', plan.name)
-
-              const tomlGen = new TomlGenerator()
-              const tomlPath = await tomlGen.generate(plan, PROJECT_DIR)
-
-              const envGen = new EnvGenerator()
-              const envVars = envGen.generate(plan, PROJECT_DIR)
-              if (envVars.length > 0) {
-                send(ws, { type: 'env_generated', vars: envVars })
-              }
-
-              const templateMapper = new TemplateMapper()
-              const template = templateMapper.map(plan)
-
-              const fileGen = new FileGenerator()
-              const files = await fileGen.generate(plan, template, PROJECT_DIR)
-              send(ws, { type: 'files_generated', files })
-
-              const tomlContent = fs.readFileSync(tomlPath, 'utf8')
-              const toml = TOML.parse(tomlContent) as any
-              const stepExpander = new StepExpander()
-              const steps = stepExpander.expand(toml, plan)
-              const phases = stepExpander.toPhaseDefinitions(steps)
-              send(ws, { type: 'steps_expanded', steps })
-
-              stepEngine.startProjectWithPhases(plan.name, plan.description, phases)
-              const state = stepEngine.getState()
-              if (state.step) {
-                mentor.explainStep(state.step, sshManager.getCleanOutput(10))
-              }
-            } catch (err) {
-              console.error('[FORGEFLOW] Pipeline error:', err)
-              stepEngine.startProject(msg.description)
-              const state = stepEngine.getState()
-              if (state.step) {
-                mentor.explainStep(state.step, sshManager.getCleanOutput(10))
-              }
-            }
-          })()
           break
         }
 
         case 'next_step': {
           stepEngine.nextStep()
           const nextState = stepEngine.getState()
-          if (nextState.step) {
-            mentor.explainStep(nextState.step, sshManager.getCleanOutput(20))
+          if (nextState?.step?.command) {
+            const output = directPty.isAlive
+              ? directPty.getCleanOutput(20)
+              : sshManager.getCleanOutput(20)
+            mentor.explainStep(nextState.step, output)
           }
           break
         }
 
         case 'mentor_question': {
           const qState = stepEngine.getState()
+          const output = directPty.isAlive
+            ? directPty.getCleanOutput(30)
+            : sshManager.getCleanOutput(30)
           mentor.answerQuestion(msg.question, {
             phase: qState.phase,
             step: qState.step,
-            terminalOutput: sshManager.getCleanOutput(30),
+            terminalOutput: output,
           })
           break
         }
@@ -389,6 +290,7 @@ wss.on('connection', (ws: WebSocket) => {
   ws.on('close', () => {
     console.log('[SERVER] Client disconnected')
     stepEngine.destroy()
+    directPty.kill()
   })
 })
 

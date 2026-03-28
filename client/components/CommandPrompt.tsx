@@ -16,15 +16,28 @@ const TOKEN_HINTS: Record<string, string> = {
   ls: 'List — show files in the current directory',
   npm: 'Node Package Manager',
   npx: 'Run an npm package directly without installing',
-  git: 'Version control system',
+  git: 'Version control — track changes to your code',
+  clone: 'Copy a repository to your machine',
+  status: 'Check what files have changed',
   init: 'Initialize / set up',
   install: 'Download and install packages',
   touch: 'Create an empty file',
-  echo: 'Print text or redirect it into a file',
+  echo: 'Print text (or write it to a file with >)',
+  cat: 'Display contents of a file',
+  rm: 'Remove/delete a file',
   python3: 'Run Python 3',
   node: 'Run a JavaScript file with Node.js',
+  claude: 'Claude Code — AI coding assistant',
+  '--version': 'Show the installed version',
+  which: 'Find where a command is installed',
+  code: 'Open Visual Studio Code',
+  'xcode-select': 'Xcode developer tools manager',
+  '--install': 'Run the installer',
+  export: 'Set an environment variable',
   '--save-dev': 'Install as a development-only dependency',
   '-y': 'Auto-accept all prompts',
+  '-g': 'Install globally (available everywhere)',
+  '-la': 'List all files including hidden ones, with details',
 }
 
 function Token({ token }: { token: string }) {
@@ -80,16 +93,14 @@ export default function CommandPrompt({ command, explanation, send }: Props) {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground leading-relaxed">{explanation}</p>
-      {send && (
-        <button
-          onClick={handleGhostType}
-          disabled={ghosted}
-          className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors"
-        >
-          <Keyboard className="w-3 h-3" />
-          {ghosted ? 'Typing into terminal…' : 'Type this for me'}
-        </button>
-      )}
+      <button
+        onClick={handleGhostType}
+        disabled={ghosted}
+        className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors"
+      >
+        <Keyboard className="w-3 h-3" />
+        {ghosted ? 'Typing into terminal…' : 'Type this for me'}
+      </button>
     </div>
   )
 }

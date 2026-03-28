@@ -1,6 +1,10 @@
 import fs from 'fs'
 import path from 'path'
-import type { GeneratedFile } from '../shared/types.js'
+
+interface GeneratedFile {
+  path: string
+  content: string
+}
 
 export class ProjectManager {
   private baseDir: string

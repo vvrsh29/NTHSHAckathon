@@ -102,3 +102,14 @@
 code, pre, .font-mono {
   font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
 }
+
+/* xterm.js overrides */
+.xterm {
+  height: 100%;
+}
+.xterm-viewport {
+  overflow-y: auto !important;
+}
+.xterm-screen {
+  height: 100% !important;
+}
