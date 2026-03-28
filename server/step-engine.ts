@@ -143,34 +143,52 @@ export class StepEngine {
   }
 
   private startOutputWatch() {
-    // Debounced check of terminal output for step completion
+    let lastMatchedStepId: string | null = null
+
     const check = () => {
       const step = this.getCurrentStep()
       if (!step?.expectedOutputPattern) return
 
-      const output = this.pty.getCleanOutput(20)
-      const pattern = new RegExp(step.expectedOutputPattern)
+      // Avoid firing the same step's success message more than once
+      if (lastMatchedStepId === step.id) return
 
-      if (pattern.test(output)) {
-        // Check for errors first
-        if (step.errorPatterns) {
-          for (const errPattern of step.errorPatterns) {
-            if (new RegExp(errPattern).test(output)) {
-              if (this.onError) {
-                this.onError(errPattern, output)
-              } else {
-                send(this.ws, {
-                  type: 'mentor_message',
-                  messageType: 'error_help',
-                  content: `It looks like something went wrong. I noticed: \`${errPattern}\`. Don't worry — errors happen to everyone! Let me help you fix it.`,
-                })
-              }
-              return
+      const output = this.pty.getCleanOutput(20)
+
+      // Check for error patterns first — surface them before success
+      if (step.errorPatterns) {
+        for (const errPattern of step.errorPatterns) {
+          if (new RegExp(errPattern).test(output)) {
+            if (this.onError) {
+              this.onError(errPattern, output)
+            } else {
+              send(this.ws, {
+                type: 'mentor_message',
+                messageType: 'error_help',
+                content: `It looks like something went wrong. I noticed: \`${errPattern}\`. Don't worry — errors happen to everyone! Let me help you fix it.`,
+              })
             }
+            return
           }
         }
-        // Pattern matched, auto-advance if in auto mode
-        // In tutor mode, just mark as ready
+      }
+
+      const pattern = new RegExp(step.expectedOutputPattern)
+      if (!pattern.test(output)) return
+
+      // Mark this step as matched so we don't fire again
+      lastMatchedStepId = step.id
+
+      if (this.state.mode === 'tutor') {
+        send(this.ws, {
+          type: 'mentor_message',
+          messageType: 'instruction',
+          content: '✓ That worked! Click **Next Step** when you\'re ready to continue.',
+        })
+      } else {
+        // Auto mode — advance automatically after a short delay
+        setTimeout(() => {
+          this.nextStep()
+        }, 1000)
       }
     }
 
