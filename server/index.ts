@@ -11,6 +11,13 @@ import { MentorEngine } from './mentor-engine.js'
 
 config()
 
+if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY === 'your-key-here') {
+  console.warn('[SERVER] ⚠️  ANTHROPIC_API_KEY not set — AI mentor will use fallback responses')
+  console.warn('[SERVER]    Set it in .env or pass it from the welcome screen')
+} else {
+  console.log('[SERVER] ✓ Anthropic API key loaded')
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = parseInt(process.env.PORT || '3456', 10)
 const PROJECT_DIR = process.env.PROJECT_DIR
@@ -27,6 +34,13 @@ app.use(express.static(clientDist))
 // Health check
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, projectDir: PROJECT_DIR })
+})
+
+app.get('/api/demo', (_req, res) => {
+  res.json({
+    description: 'portfolio website',
+    hint: 'A personal portfolio site with your name, bio, and projects section'
+  })
 })
 
 const server = createServer(app)

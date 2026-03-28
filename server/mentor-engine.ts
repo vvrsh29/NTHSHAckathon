@@ -2,17 +2,20 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { WebSocket } from 'ws'
 import type { ServerMessage, Step, Phase } from '../shared/types.js'
 
-const MENTOR_SYSTEM_PROMPT = `You are LaunchPad's AI mentor — a warm, encouraging coding teacher for absolute beginners.
+const MENTOR_SYSTEM_PROMPT = `You are LaunchPad's AI mentor — a warm, encouraging coding teacher for complete beginners.
+
+Your student is building their very first website. They may never have used a terminal before.
 
 Rules:
-- Explain EVERYTHING in plain language. No jargon without explanation.
-- Use analogies from everyday life (folders = filing cabinets, terminal = a text conversation with your computer).
-- Keep responses concise (2-4 sentences for explanations, more for errors).
-- Use markdown for formatting: **bold** for key terms, \`code\` for commands/code.
-- Be encouraging! Learning to code is hard and every small win matters.
-- When explaining errors, always (1) explain what went wrong, (2) why it happened, (3) how to fix it.
-- Never be condescending. The student is smart — they just haven't learned this yet.
-- You are teaching HTML, CSS, and JavaScript fundamentals. No frameworks.`
+- Use plain language always. No jargon without a friendly explanation.
+- Use analogies: terminal = "a text conversation with your computer", directory = "folder", npm = "app store for code".
+- Keep explanations to 2-4 sentences. Be concise but warm.
+- Use markdown: **bold** for key terms, \`backticks\` for commands and code.
+- Every response should feel encouraging. Learning is hard and every win matters.
+- For errors: always (1) what went wrong, (2) why it happens, (3) exactly how to fix it.
+- Never be condescending. The student is smart — coding is just new to them.
+- You are teaching HTML, CSS, and JavaScript. No frameworks, no TypeScript. Keep it simple.
+- When a step completes successfully, celebrate it! "Nice work!" "You just did something real!"`
 
 function send(ws: WebSocket, msg: ServerMessage) {
   if (ws.readyState === ws.OPEN) {
@@ -45,8 +48,8 @@ export class MentorEngine {
     if (!this.client) {
       send(this.ws, {
         type: 'mentor_message',
-        messageType: 'explanation',
-        content: step.explanation,
+        messageType: 'instruction',
+        content: `**${step.title}**\n\n${step.explanation}${step.command ? `\n\nType this command:\n\`\`\`\n${step.command}\n\`\`\`` : ''}`,
       })
       return
     }
@@ -82,6 +85,12 @@ Give a friendly, concise explanation of this step. If the terminal shows somethi
           })
         }
       }
+      send(this.ws, {
+        type: 'mentor_message',
+        messageType: 'explanation',
+        content: '',
+        streaming: false,
+      })
     } catch (err) {
       console.error('[MENTOR] API error:', err)
       send(this.ws, {
@@ -134,6 +143,12 @@ Explain the error warmly, tell them what went wrong and how to fix it.`,
           })
         }
       }
+      send(this.ws, {
+        type: 'mentor_message',
+        messageType: 'error_help',
+        content: '',
+        streaming: false,
+      })
     } catch (err) {
       console.error('[MENTOR] API error:', err)
       send(this.ws, {
@@ -186,6 +201,12 @@ Answer their question clearly and encouragingly. Use examples if it helps.`,
           })
         }
       }
+      send(this.ws, {
+        type: 'mentor_message',
+        messageType: 'explanation',
+        content: '',
+        streaming: false,
+      })
     } catch (err) {
       console.error('[MENTOR] API error:', err)
       send(this.ws, {
