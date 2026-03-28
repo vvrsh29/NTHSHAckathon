@@ -30,7 +30,6 @@ function FakeTerminal() {
   const [lines, setLines] = useState<Line[]>([])
   const [typing, setTyping] = useState('')
   const [cursor, setCursor] = useState(true)
-  const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -71,10 +70,6 @@ function FakeTerminal() {
     return () => { cancelled = true; clearInterval(blink) }
   }, [])
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [lines, typing])
-
   const promptPrefix = '~/my-portfolio $ '
 
   return (
@@ -106,7 +101,6 @@ function FakeTerminal() {
           {typing}
           <span className={cn('inline-block w-[7px] h-[14px] bg-green-400 ml-px align-middle', cursor ? 'opacity-100' : 'opacity-0')} />
         </div>
-        <div ref={bottomRef} />
       </div>
     </div>
   )
