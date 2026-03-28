@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useWebSocket } from './hooks/useWebSocket'
+import { useMentor } from './hooks/useMentor'
 import TerminalPanel from './components/TerminalPanel'
 import MentorPanel from './components/MentorPanel'
 import WelcomeScreen from './components/WelcomeScreen'
@@ -30,7 +31,9 @@ export default function App() {
     }
   }, [])
 
-  const { send, connected } = useWebSocket(handleMessage)
+  const { send, connected, addListener } = useWebSocket(handleMessage)
+  // useMentor wires streaming message concatenation via addListener
+  const { messages: mentorMessages } = useMentor(addListener)
 
   const handleStart = useCallback((description: string, apiKey?: string) => {
     send({ type: 'start_project', description, apiKey })
@@ -75,6 +78,7 @@ export default function App() {
               currentStep={currentStep}
               commandSuggestion={commandSuggestion}
               generatedFiles={generatedFiles}
+              messages={mentorMessages}
             />
           </div>
         </div>

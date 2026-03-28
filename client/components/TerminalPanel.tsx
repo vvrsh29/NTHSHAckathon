@@ -1,7 +1,4 @@
 import { useEffect, useRef } from 'react'
-import '@xterm/xterm/css/xterm.css'
-import { useWebSocket } from '../hooks/useWebSocket'
-import { useTerminal } from '../hooks/useTerminal'
 import type { ClientMessage, ServerMessage } from '../../shared/types'
 
 interface Props {
@@ -28,7 +25,6 @@ export default function TerminalPanel({ send }: Props) {
     async function init() {
       const { Terminal } = await import('@xterm/xterm')
       const { FitAddon } = await import('@xterm/addon-fit')
-      await import('@xterm/xterm/css/xterm.css')
 
       if (cancelled || !containerRef.current) return
 

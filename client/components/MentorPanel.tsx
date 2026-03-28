@@ -1,23 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { MessageCircle, Sparkles, AlertTriangle, BookOpen } from 'lucide-react'
-import type { ClientMessage, Step, GeneratedFile, MentorMessageType, ServerMessage } from '../../shared/types'
+import { MessageCircle, Sparkles, AlertTriangle, BookOpen, ArrowRight } from 'lucide-react'
+import type { ClientMessage, Step, GeneratedFile, MentorMessageType } from '../../shared/types'
+import type { MentorMessage } from '../hooks/useMentor'
 import CommandPrompt from './CommandPrompt'
 import CodeExplainer from './CodeExplainer'
-
-interface MentorMsg {
-  id: string
-  messageType: MentorMessageType
-  content: string
-  timestamp: number
-}
-
-interface Props {
-  send: (msg: ClientMessage) => void
-  currentStep: Step | null
-  commandSuggestion: { command: string; explanation: string } | null
-  generatedFiles?: { files: GeneratedFile[]; explanation: string } | null
-}
 
 const iconMap: Record<MentorMessageType, any> = {
   explanation: BookOpen,
@@ -33,34 +20,28 @@ const colorMap: Record<MentorMessageType, string> = {
   error_help: 'border-amber-500/30 bg-amber-500/5',
 }
 
-export default function MentorPanel({ send, currentStep, commandSuggestion, generatedFiles }: Props) {
-  const [messages, setMessages] = useState<MentorMsg[]>([])
+interface Props {
+  send: (msg: ClientMessage) => void
+  currentStep: Step | null
+  commandSuggestion: { command: string; explanation: string } | null
+  generatedFiles?: { files: GeneratedFile[]; explanation: string } | null
+  messages: MentorMessage[]
+}
+
+export default function MentorPanel({ send, currentStep, commandSuggestion, generatedFiles, messages }: Props) {
   const [question, setQuestion] = useState('')
   const [asking, setAsking] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Listen for mentor_message via window event
+  // Clear "asking" spinner when a complete (non-streaming) message arrives
   useEffect(() => {
-    function handler(e: CustomEvent<ServerMessage>) {
-      if (e.detail.type === 'mentor_message') {
-        const msg = e.detail
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            messageType: msg.messageType,
-            content: msg.content,
-            timestamp: Date.now(),
-          },
-        ])
-        setAsking(false)
-      }
+    const last = messages[messages.length - 1]
+    if (last && !last.streaming) {
+      setAsking(false)
     }
-    window.addEventListener('ws-message', handler as any)
-    return () => window.removeEventListener('ws-message', handler as any)
-  }, [])
+  }, [messages])
 
-  // Auto-scroll
+  // Auto-scroll when messages update
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages])
@@ -70,6 +51,10 @@ export default function MentorPanel({ send, currentStep, commandSuggestion, gene
     send({ type: 'mentor_question', question: question.trim() })
     setAsking(true)
     setQuestion('')
+  }
+
+  const handleNextStep = () => {
+    send({ type: 'next_step' } as any)
   }
 
   return (
@@ -102,6 +87,9 @@ export default function MentorPanel({ send, currentStep, commandSuggestion, gene
               <div className="flex items-center gap-2 mb-1">
                 <Icon className="w-4 h-4 text-gray-400" />
                 <span className="text-xs text-gray-400 capitalize">{msg.messageType.replace('_', ' ')}</span>
+                {msg.streaming && (
+                  <span className="text-xs text-gray-500 animate-pulse ml-auto">typing…</span>
+                )}
               </div>
               <div className="text-sm text-gray-200 prose prose-invert prose-sm max-w-none">
                 <ReactMarkdown>{msg.content}</ReactMarkdown>
@@ -115,8 +103,20 @@ export default function MentorPanel({ send, currentStep, commandSuggestion, gene
         )}
       </div>
 
-      {/* Question input */}
-      <div className="flex-none border-t border-white/10 p-3">
+      {/* Bottom bar: Next Step + Question input */}
+      <div className="flex-none border-t border-white/10 p-3 space-y-2">
+        {/* Next Step button — only show when there's an active step */}
+        {currentStep && (
+          <button
+            onClick={handleNextStep}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium transition w-full justify-center"
+          >
+            Next Step
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        )}
+
+        {/* Question input */}
         <div className="flex gap-2">
           <input
             type="text"
