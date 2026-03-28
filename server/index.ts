@@ -46,7 +46,9 @@ const app = express()
 app.use(express.json())
 
 const clientDist = path.resolve(__dirname, '../dist/client')
-app.use(express.static(clientDist))
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist))
+}
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, projectDir: PROJECT_DIR, sshPort: SSH_PORT })
@@ -108,6 +110,16 @@ app.get('/api/sessions', (_req, res) => {
     }
   } catch {}
   res.json(sessions)
+})
+
+// Catch-all: in dev redirect to Vite, in prod serve index.html
+app.get('*', (_req, res) => {
+  const indexHtml = path.join(clientDist, 'index.html')
+  if (fs.existsSync(indexHtml)) {
+    res.sendFile(indexHtml)
+  } else {
+    res.redirect('http://localhost:5173')
+  }
 })
 
 // --- WebSocket server ---
