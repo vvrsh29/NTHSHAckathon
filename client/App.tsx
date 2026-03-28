@@ -122,7 +122,7 @@ export default function App() {
 
           {/* Main layout — resizable panels */}
           <div className="flex-1 min-h-0">
-            <ResizablePanelGroup orientation="horizontal" className="h-full">
+            <ResizablePanelGroup direction="horizontal" className="h-full">
 
               {/* Left: File Tree */}
               <ResizablePanel defaultSize={15} minSize={10} maxSize={25}>

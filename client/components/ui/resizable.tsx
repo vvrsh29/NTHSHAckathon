@@ -1,31 +1,44 @@
 "use client"
 
-import { Group, Panel, Separator as ResizeHandle } from "react-resizable-panels"
+import { GripVertical } from "lucide-react"
+import * as ResizablePrimitive from "react-resizable-panels"
 import { cn } from "@/lib/utils"
 
 const ResizablePanelGroup = ({
   className,
   ...props
-}: React.ComponentProps<typeof Group>) => (
-  <Group
+}: React.ComponentProps<typeof ResizablePrimitive.PanelGroup>) => (
+  <ResizablePrimitive.PanelGroup
     className={cn("flex h-full w-full data-[panel-group-direction=vertical]:flex-col", className)}
     {...props}
   />
 )
 
-const ResizablePanel = Panel
+const ResizablePanel = ResizablePrimitive.Panel
 
 const ResizableHandle = ({
+  withHandle,
   className,
   ...props
-}: React.ComponentProps<typeof ResizeHandle>) => (
-  <ResizeHandle
+}: React.ComponentProps<typeof ResizablePrimitive.PanelResizeHandle> & {
+  withHandle?: boolean
+}) => (
+  <ResizablePrimitive.PanelResizeHandle
     className={cn(
-      "relative flex w-px items-center justify-center bg-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+      "relative flex w-px items-center justify-center bg-border cursor-col-resize",
+      "hover:bg-zinc-400 dark:hover:bg-zinc-600 transition-colors",
+      "after:absolute after:inset-y-0 after:left-1/2 after:w-2 after:-translate-x-1/2",
+      "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
       className
     )}
     {...props}
-  />
+  >
+    {withHandle && (
+      <div className="z-10 flex h-4 w-3 items-center justify-center rounded-sm border bg-border">
+        <GripVertical className="h-2.5 w-2.5" />
+      </div>
+    )}
+  </ResizablePrimitive.PanelResizeHandle>
 )
 
 export { ResizablePanelGroup, ResizablePanel, ResizableHandle }
