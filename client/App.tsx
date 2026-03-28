@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useWebSocket } from './hooks/useWebSocket'
 import { useMentor } from './hooks/useMentor'
 import TerminalPanel from './components/TerminalPanel'
@@ -32,57 +33,82 @@ export default function App() {
   }, [])
 
   const { send, connected, addListener } = useWebSocket(handleMessage)
-  // useMentor wires streaming message concatenation via addListener
-  const { messages: mentorMessages } = useMentor(addListener)
+  const { messages: mentorMessages, isThinking, startThinking } = useMentor(addListener)
 
   const handleStart = useCallback((description: string, apiKey?: string) => {
     send({ type: 'start_project', description, apiKey })
     setStarted(true)
   }, [send])
 
-  if (!started) {
-    return <WelcomeScreen onStart={handleStart} connected={connected} />
-  }
-
   return (
-    <div className="h-screen flex flex-col bg-surface-0">
-      {/* Top bar */}
-      <div className="flex-none flex items-center justify-between px-4 py-2 border-b border-white/10 bg-surface-1">
-        <div className="flex items-center gap-3">
-          <span className="text-brand-400 font-bold text-lg">LaunchPad</span>
-          <span className={`inline-block w-2 h-2 rounded-full ${connected ? 'bg-green-400' : 'bg-red-400'}`} />
-        </div>
-        <StepIndicator currentPhase={currentPhase} stepIndex={stepIndex} />
-      </div>
+    <AnimatePresence mode="wait">
+      {!started ? (
+        <motion.div
+          key="welcome"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <WelcomeScreen onStart={handleStart} connected={connected} />
+        </motion.div>
+      ) : (
+        <motion.div
+          key="main"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          className="h-screen flex flex-col bg-surface-0"
+        >
+          {/* Top bar */}
+          <div className="flex-none flex items-center justify-between px-4 py-2 border-b border-white/10 bg-surface-1">
+            <div className="flex items-center gap-3">
+              <span className="text-brand-400 font-bold text-lg">LaunchPad</span>
+              {connected ? (
+                <span className="inline-block w-2 h-2 rounded-full bg-green-400" title="Connected" />
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+                  <span className="text-xs text-yellow-400">Reconnecting...</span>
+                </span>
+              )}
+            </div>
+            <StepIndicator currentPhase={currentPhase} stepIndex={stepIndex} />
+          </div>
 
-      {/* Main panels */}
-      <div className="flex-1 flex min-h-0">
-        {/* Terminal — left */}
-        <div className="w-1/2 border-r border-white/10 flex flex-col">
-          <div className="flex-none px-4 py-2 text-xs text-gray-400 uppercase tracking-wide bg-surface-1 border-b border-white/5">
-            Terminal
-          </div>
-          <div className="flex-1 min-h-0">
-            <TerminalPanel send={send} />
-          </div>
-        </div>
+          {/* Main panels */}
+          <div className="flex-1 flex min-h-0">
+            {/* Terminal — left */}
+            <div className="w-1/2 min-w-0 border-r border-white/10 flex flex-col overflow-hidden">
+              <div className="flex-none px-4 py-2 text-xs text-gray-400 uppercase tracking-wide bg-surface-1 border-b border-white/5">
+                Terminal
+              </div>
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <TerminalPanel send={send} />
+              </div>
+            </div>
 
-        {/* Mentor — right */}
-        <div className="w-1/2 flex flex-col">
-          <div className="flex-none px-4 py-2 text-xs text-gray-400 uppercase tracking-wide bg-surface-1 border-b border-white/5">
-            AI Mentor
+            {/* Mentor — right */}
+            <div className="w-1/2 min-w-0 flex flex-col">
+              <div className="flex-none px-4 py-2 text-xs text-gray-400 uppercase tracking-wide bg-surface-1 border-b border-white/5">
+                AI Mentor
+              </div>
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                <MentorPanel
+                  send={send}
+                  currentStep={currentStep}
+                  commandSuggestion={commandSuggestion}
+                  generatedFiles={generatedFiles}
+                  messages={mentorMessages}
+                  isThinking={isThinking}
+                  onStartThinking={startThinking}
+                />
+              </div>
+            </div>
           </div>
-          <div className="flex-1 min-h-0">
-            <MentorPanel
-              send={send}
-              currentStep={currentStep}
-              commandSuggestion={commandSuggestion}
-              generatedFiles={generatedFiles}
-              messages={mentorMessages}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

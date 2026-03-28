@@ -114,20 +114,26 @@ export default function WelcomeScreen({ onStart, connected }: Props) {
 
         {/* Start button */}
         <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={{ scale: connected ? 1.02 : 1 }}
+          whileTap={{ scale: connected ? 0.98 : 1 }}
           onClick={handleSubmit}
           disabled={!description.trim() || !connected}
           className="w-full py-3 bg-brand-600 hover:bg-brand-500 disabled:bg-gray-700 disabled:text-gray-400 text-white rounded-xl font-semibold text-lg transition flex items-center justify-center gap-2"
         >
           <Rocket className="w-5 h-5" />
-          {connected ? 'Launch!' : 'Connecting to server...'}
+          Launch!
         </motion.button>
 
         {!connected && (
-          <p className="text-center text-amber-400/70 text-xs mt-3">
-            Make sure the server is running: <code className="bg-surface-2 px-1 rounded">npm run dev</code>
-          </p>
+          <div className="text-center mt-3 space-y-1">
+            <p className="text-yellow-400 text-sm flex items-center justify-center gap-1.5">
+              <span className="inline-block w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+              Connecting to server...
+            </p>
+            <p className="text-gray-500 text-xs">
+              Make sure the server is running: <code className="bg-surface-2 px-1 rounded">npm run dev</code>
+            </p>
+          </div>
         )}
       </motion.div>
     </div>

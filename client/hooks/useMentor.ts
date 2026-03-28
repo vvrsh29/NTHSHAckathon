@@ -11,10 +11,16 @@ export interface MentorMessage {
 
 export function useMentor(addListener: (fn: (msg: ServerMessage) => void) => () => void) {
   const [messages, setMessages] = useState<MentorMessage[]>([])
+  const [isThinking, setIsThinking] = useState(false)
 
   useEffect(() => {
     const unsub = addListener((msg) => {
       if (msg.type === 'mentor_message') {
+        // A non-streaming mentor_message means thinking is done
+        if (!msg.streaming) {
+          setIsThinking(false)
+        }
+
         setMessages((prev) => {
           // If streaming, update the last message of same type
           if (msg.streaming) {
@@ -49,5 +55,7 @@ export function useMentor(addListener: (fn: (msg: ServerMessage) => void) => () 
 
   const clearMessages = useCallback(() => setMessages([]), [])
 
-  return { messages, clearMessages }
+  const startThinking = useCallback(() => setIsThinking(true), [])
+
+  return { messages, clearMessages, isThinking, startThinking }
 }
