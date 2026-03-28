@@ -19,10 +19,16 @@ export class StepEngine {
   private ws: WebSocket
   private pty: PtyManager
   private outputCheckTimer: ReturnType<typeof setTimeout> | null = null
+  private onError?: (error: string, terminalOutput: string) => void
 
-  constructor(ws: WebSocket, pty: PtyManager) {
+  constructor(
+    ws: WebSocket,
+    pty: PtyManager,
+    onError?: (error: string, terminalOutput: string) => void
+  ) {
     this.ws = ws
     this.pty = pty
+    this.onError = onError
     this.state = {
       currentPhase: 'setup',
       currentStepIndex: 0,
@@ -150,11 +156,15 @@ export class StepEngine {
         if (step.errorPatterns) {
           for (const errPattern of step.errorPatterns) {
             if (new RegExp(errPattern).test(output)) {
-              send(this.ws, {
-                type: 'mentor_message',
-                messageType: 'error_help',
-                content: `It looks like something went wrong. I noticed: \`${errPattern}\`. Don't worry — errors happen to everyone! Let me help you fix it.`,
-              })
+              if (this.onError) {
+                this.onError(errPattern, output)
+              } else {
+                send(this.ws, {
+                  type: 'mentor_message',
+                  messageType: 'error_help',
+                  content: `It looks like something went wrong. I noticed: \`${errPattern}\`. Don't worry — errors happen to everyone! Let me help you fix it.`,
+                })
+              }
               return
             }
           }
@@ -165,6 +175,13 @@ export class StepEngine {
     }
 
     this.outputCheckTimer = setInterval(check, 1000)
+  }
+
+  getState() {
+    return {
+      phase: this.state.currentPhase,
+      step: this.getCurrentStep(),
+    }
   }
 
   destroy() {

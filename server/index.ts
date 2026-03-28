@@ -6,6 +6,8 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import type { ClientMessage, ServerMessage } from '../shared/types.js'
 import { PtyManager } from './pty-manager.js'
+import { StepEngine } from './step-engine.js'
+import { MentorEngine } from './mentor-engine.js'
 
 config()
 
@@ -57,6 +59,11 @@ wss.on('connection', (ws: WebSocket) => {
     send(ws, { type: 'terminal_output', data })
   })
 
+  const mentor = new MentorEngine(ws)
+  const stepEngine = new StepEngine(ws, pty, (error, output) => {
+    mentor.explainError(error, output)
+  })
+
   ws.on('message', (raw: Buffer) => {
     try {
       const msg: ClientMessage = JSON.parse(raw.toString())
@@ -70,48 +77,44 @@ wss.on('connection', (ws: WebSocket) => {
           pty.resize(msg.cols, msg.rows)
           break
 
-        case 'start_project':
+        case 'start_project': {
           console.log('[SERVER] start_project:', msg.description)
-          // Store API key if provided
           if (msg.apiKey) {
             process.env.ANTHROPIC_API_KEY = msg.apiKey
+            mentor.refreshClient()
           }
-          // Will be handled by step-engine (Agent 3)
-          send(ws, {
-            type: 'mentor_message',
-            messageType: 'encouragement',
-            content: `Great! Let's build: **${msg.description}**. Starting the setup phase now...`,
-          })
-          send(ws, {
-            type: 'step_update',
-            phase: 'setup',
-            stepIndex: 0,
-            step: {
-              id: 'welcome',
-              phase: 'setup',
-              title: 'Welcome to LaunchPad!',
-              explanation: 'We are about to set up your project. Follow the commands shown to get started.',
-            },
-          })
+          stepEngine.startProject(msg.description)
+          const state = stepEngine.getState()
+          if (state.step) {
+            mentor.explainStep(state.step, pty.getCleanOutput(10))
+          }
           break
+        }
 
-        case 'next_step':
+        case 'next_step': {
           console.log('[SERVER] next_step requested')
-          // Will be handled by step-engine (Agent 3)
+          stepEngine.nextStep()
+          const nextState = stepEngine.getState()
+          if (nextState.step) {
+            mentor.explainStep(nextState.step, pty.getCleanOutput(20))
+          }
           break
+        }
 
-        case 'mentor_question':
+        case 'mentor_question': {
           console.log('[SERVER] mentor_question:', msg.question)
-          // Will be handled by mentor-engine (Agent 3)
-          send(ws, {
-            type: 'mentor_message',
-            messageType: 'explanation',
-            content: `That's a great question! The mentor engine will answer "${msg.question}" once it's wired up.`,
+          const qState = stepEngine.getState()
+          mentor.answerQuestion(msg.question, {
+            phase: qState.phase,
+            step: qState.step,
+            terminalOutput: pty.getCleanOutput(30),
           })
           break
+        }
 
         case 'mode_change':
           console.log('[SERVER] mode_change:', msg.mode)
+          stepEngine.setMode(msg.mode)
           break
 
         default:
@@ -125,6 +128,7 @@ wss.on('connection', (ws: WebSocket) => {
   ws.on('close', () => {
     console.log('[SERVER] Client disconnected')
     pty.kill()
+    stepEngine.destroy()
   })
 })
 
