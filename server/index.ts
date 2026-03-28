@@ -19,10 +19,11 @@ import { StepExpander } from './forgeflow/step-expander.js'
 
 config()
 
-if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY === 'your-key-here') {
-  console.warn('[SERVER] ⚠️  ANTHROPIC_API_KEY not set — AI mentor will use fallback responses')
+const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
+if (!geminiKey) {
+  console.warn('[SERVER] ⚠️  GEMINI_API_KEY not set — AI mentor will use fallback responses')
 } else {
-  console.log('[SERVER] ✓ Anthropic API key loaded')
+  console.log('[SERVER] ✓ Gemini API key loaded')
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -302,7 +303,7 @@ wss.on('connection', (ws: WebSocket) => {
         case 'start_project': {
           console.log('[SERVER] start_project:', msg.description)
           if (msg.apiKey) {
-            process.env.ANTHROPIC_API_KEY = msg.apiKey
+            process.env.GEMINI_API_KEY = msg.apiKey
             mentor.refreshClient()
           }
 

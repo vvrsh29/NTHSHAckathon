@@ -1,25 +1,28 @@
-import Anthropic from '@anthropic-ai/sdk'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { ParsedPlan } from '../../shared/types.js'
 
+function getApiKey() {
+  return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || ''
+}
+
 export class TaskParser {
-  private client: Anthropic | null = null
+  private genAI: GoogleGenerativeAI | null = null
 
   constructor() { this.refreshClient() }
 
   refreshClient() {
-    const apiKey = process.env.ANTHROPIC_API_KEY
-    if (apiKey && apiKey !== 'your-key-here') {
-      this.client = new Anthropic({ apiKey })
+    const apiKey = getApiKey()
+    if (apiKey) {
+      this.genAI = new GoogleGenerativeAI(apiKey)
     }
   }
 
   async parse(userInput: string): Promise<ParsedPlan> {
-    if (!this.client) return this.heuristicParse(userInput)
+    if (!this.genAI) return this.heuristicParse(userInput)
     try {
-      const response = await this.client.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 500,
-        system: `You are a project classifier. Given a user's project idea, extract structured information and return ONLY valid JSON with no markdown, no explanation.
+      const model = this.genAI.getGenerativeModel({
+        model: 'gemini-2.0-flash',
+        systemInstruction: `You are a project classifier. Given a user's project idea, extract structured information and return ONLY valid JSON with no markdown, no explanation, no code fences.
 
 Return this exact shape:
 {
@@ -37,10 +40,13 @@ Rules:
 - features: 2-4 key features extracted from the description
 - techStack: always ["html", "css", "javascript"]
 - estimatedSteps: 5-10 based on complexity`,
-        messages: [{ role: 'user', content: `Project idea: "${userInput}"` }],
       })
-      const text = response.content[0].type === 'text' ? response.content[0].text : ''
-      return this.validate(JSON.parse(text.trim()))
+
+      const result = await model.generateContent(`Project idea: "${userInput}"`)
+      const text = result.response.text().trim()
+      const jsonMatch = text.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) throw new Error('No JSON in response')
+      return this.validate(JSON.parse(jsonMatch[0]))
     } catch (err) {
       console.error('[FORGEFLOW] Task parser error, using heuristic:', err)
       return this.heuristicParse(userInput)

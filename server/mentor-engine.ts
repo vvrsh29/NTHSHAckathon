@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { WebSocket } from 'ws'
 import type { ServerMessage, Step, Phase } from '../shared/types.js'
 
@@ -23,8 +23,12 @@ function send(ws: WebSocket, msg: ServerMessage) {
   }
 }
 
+function getApiKey() {
+  return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || ''
+}
+
 export class MentorEngine {
-  private client: Anthropic | null = null
+  private genAI: GoogleGenerativeAI | null = null
   private ws: WebSocket
 
   constructor(ws: WebSocket) {
@@ -33,19 +37,18 @@ export class MentorEngine {
   }
 
   private initClient() {
-    const apiKey = process.env.ANTHROPIC_API_KEY
-    if (apiKey && apiKey !== 'sk-ant-xxxxx') {
-      this.client = new Anthropic({ apiKey })
+    const apiKey = getApiKey()
+    if (apiKey) {
+      this.genAI = new GoogleGenerativeAI(apiKey)
     }
   }
 
-  /** Re-check for API key (in case user provided it after startup) */
   refreshClient() {
     this.initClient()
   }
 
   async explainStep(step: Step, terminalOutput: string) {
-    if (!this.client) {
+    if (!this.genAI) {
       send(this.ws, {
         type: 'mentor_message',
         messageType: 'instruction',
@@ -55,14 +58,12 @@ export class MentorEngine {
     }
 
     try {
-      const stream = this.client.messages.stream({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 500,
-        system: MENTOR_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: `The student is on step "${step.title}" (phase: ${step.phase}).
+      const model = this.genAI.getGenerativeModel({
+        model: 'gemini-2.0-flash',
+        systemInstruction: MENTOR_SYSTEM_PROMPT,
+      })
+
+      const prompt = `The student is on step "${step.title}" (phase: ${step.phase}).
 Step explanation: ${step.explanation}
 ${step.command ? `Command to type: \`${step.command}\`` : ''}
 Recent terminal output:
@@ -70,29 +71,24 @@ Recent terminal output:
 ${terminalOutput.slice(-500)}
 \`\`\`
 
-Give a friendly, concise explanation of this step. If the terminal shows something notable, mention it.`,
-          },
-        ],
-      })
+Give a friendly, concise explanation of this step. If the terminal shows something notable, mention it.`
 
-      for await (const event of stream) {
-        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+      const result = await model.generateContentStream(prompt)
+
+      for await (const chunk of result.stream) {
+        const text = chunk.text()
+        if (text) {
           send(this.ws, {
             type: 'mentor_message',
             messageType: 'explanation',
-            content: event.delta.text,
+            content: text,
             streaming: true,
           })
         }
       }
-      send(this.ws, {
-        type: 'mentor_message',
-        messageType: 'explanation',
-        content: '',
-        streaming: false,
-      })
+      send(this.ws, { type: 'mentor_message', messageType: 'explanation', content: '', streaming: false })
     } catch (err) {
-      console.error('[MENTOR] API error:', err)
+      console.error('[MENTOR] Gemini error:', err)
       send(this.ws, {
         type: 'mentor_message',
         messageType: 'explanation',
@@ -102,7 +98,7 @@ Give a friendly, concise explanation of this step. If the terminal shows somethi
   }
 
   async explainError(error: string, terminalOutput: string) {
-    if (!this.client) {
+    if (!this.genAI) {
       send(this.ws, {
         type: 'mentor_message',
         messageType: 'error_help',
@@ -112,14 +108,13 @@ Give a friendly, concise explanation of this step. If the terminal shows somethi
     }
 
     try {
-      const stream = this.client.messages.stream({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 600,
-        system: MENTOR_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: `The student got an error in the terminal. Help them understand what happened and how to fix it.
+      const model = this.genAI.getGenerativeModel({
+        model: 'gemini-2.0-flash',
+        systemInstruction: MENTOR_SYSTEM_PROMPT,
+      })
+
+      const result = await model.generateContentStream(
+        `The student got an error in the terminal. Help them understand what happened and how to fix it.
 
 Error detected: ${error}
 
@@ -128,29 +123,18 @@ Recent terminal output:
 ${terminalOutput.slice(-800)}
 \`\`\`
 
-Explain the error warmly, tell them what went wrong and how to fix it.`,
-          },
-        ],
-      })
+Explain the error warmly, tell them what went wrong and how to fix it.`
+      )
 
-      for await (const event of stream) {
-        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-          send(this.ws, {
-            type: 'mentor_message',
-            messageType: 'error_help',
-            content: event.delta.text,
-            streaming: true,
-          })
+      for await (const chunk of result.stream) {
+        const text = chunk.text()
+        if (text) {
+          send(this.ws, { type: 'mentor_message', messageType: 'error_help', content: text, streaming: true })
         }
       }
-      send(this.ws, {
-        type: 'mentor_message',
-        messageType: 'error_help',
-        content: '',
-        streaming: false,
-      })
+      send(this.ws, { type: 'mentor_message', messageType: 'error_help', content: '', streaming: false })
     } catch (err) {
-      console.error('[MENTOR] API error:', err)
+      console.error('[MENTOR] Gemini error:', err)
       send(this.ws, {
         type: 'mentor_message',
         messageType: 'error_help',
@@ -160,24 +144,23 @@ Explain the error warmly, tell them what went wrong and how to fix it.`,
   }
 
   async answerQuestion(question: string, context: { phase: Phase; step: Step | null; terminalOutput: string }) {
-    if (!this.client) {
+    if (!this.genAI) {
       send(this.ws, {
         type: 'mentor_message',
         messageType: 'explanation',
-        content: `Great question! Unfortunately, the AI mentor needs an API key to answer questions. Add your ANTHROPIC_API_KEY to get personalized answers.`,
+        content: `Great question! Unfortunately, the AI mentor needs a Gemini API key to answer questions. Add your GEMINI_API_KEY to get personalized answers.`,
       })
       return
     }
 
     try {
-      const stream = this.client.messages.stream({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 800,
-        system: MENTOR_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: `The student is in the "${context.phase}" phase${context.step ? `, on step "${context.step.title}"` : ''}.
+      const model = this.genAI.getGenerativeModel({
+        model: 'gemini-2.0-flash',
+        systemInstruction: MENTOR_SYSTEM_PROMPT,
+      })
+
+      const result = await model.generateContentStream(
+        `The student is in the "${context.phase}" phase${context.step ? `, on step "${context.step.title}"` : ''}.
 
 Recent terminal output:
 \`\`\`
@@ -186,29 +169,18 @@ ${context.terminalOutput.slice(-500)}
 
 Their question: "${question}"
 
-Answer their question clearly and encouragingly. Use examples if it helps.`,
-          },
-        ],
-      })
+Answer their question clearly and encouragingly. Use examples if it helps.`
+      )
 
-      for await (const event of stream) {
-        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-          send(this.ws, {
-            type: 'mentor_message',
-            messageType: 'explanation',
-            content: event.delta.text,
-            streaming: true,
-          })
+      for await (const chunk of result.stream) {
+        const text = chunk.text()
+        if (text) {
+          send(this.ws, { type: 'mentor_message', messageType: 'explanation', content: text, streaming: true })
         }
       }
-      send(this.ws, {
-        type: 'mentor_message',
-        messageType: 'explanation',
-        content: '',
-        streaming: false,
-      })
+      send(this.ws, { type: 'mentor_message', messageType: 'explanation', content: '', streaming: false })
     } catch (err) {
-      console.error('[MENTOR] API error:', err)
+      console.error('[MENTOR] Gemini error:', err)
       send(this.ws, {
         type: 'mentor_message',
         messageType: 'explanation',

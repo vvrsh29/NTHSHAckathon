@@ -11,7 +11,7 @@ type OutputCallback = (data: string) => void
 type StatusCallback = (connected: boolean) => void
 
 export class SSHManager {
-  private server: SSHServer
+  private server: InstanceType<typeof SSHServer>
   private outputListeners: Set<OutputCallback> = new Set()
   private statusListeners: Set<StatusCallback> = new Set()
   private activePty: pty.IPty | null = null

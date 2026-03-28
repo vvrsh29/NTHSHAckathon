@@ -160,13 +160,13 @@ export default function WelcomeScreen({ onStart, onResume, connected }: Props) {
               className="mt-2"
             >
               <p className="text-xs text-gray-500 mb-2">
-                Enter your Anthropic API key for AI-powered explanations.
+                Enter your Gemini API key for AI-powered explanations.
               </p>
               <input
                 type="password"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-ant-... (optional if set in .env)"
+                placeholder="AIza... (optional if set in .env)"
                 className="w-full bg-surface-2 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500/50"
               />
             </motion.div>

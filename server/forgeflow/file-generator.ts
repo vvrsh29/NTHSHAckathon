@@ -1,18 +1,22 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import Anthropic from '@anthropic-ai/sdk'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { ParsedPlan } from '../../shared/types.js'
 import type { TemplateConfig } from './template-mapper.js'
 
+function getApiKey() {
+  return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || ''
+}
+
 export class FileGenerator {
-  private client: Anthropic | null = null
+  private genAI: GoogleGenerativeAI | null = null
 
   constructor() { this.refreshClient() }
 
   refreshClient() {
-    const apiKey = process.env.ANTHROPIC_API_KEY
-    if (apiKey && apiKey !== 'your-key-here') {
-      this.client = new Anthropic({ apiKey })
+    const apiKey = getApiKey()
+    if (apiKey) {
+      this.genAI = new GoogleGenerativeAI(apiKey)
     }
   }
 
@@ -43,34 +47,33 @@ export class FileGenerator {
   }
 
   private async generateFileContent(templateId: string, plan: ParsedPlan, template: TemplateConfig): Promise<string> {
-    if (this.client) {
-      try { return await this.generateWithClaude(templateId, plan, template) }
-      catch (err) { console.warn('[FORGEFLOW] Claude generation failed, using fallback:', err) }
+    if (this.genAI) {
+      try { return await this.generateWithGemini(templateId, plan, template) }
+      catch (err) { console.warn('[FORGEFLOW] Gemini generation failed, using fallback:', err) }
     }
     return this.getFallbackContent(templateId, plan)
   }
 
-  private async generateWithClaude(templateId: string, plan: ParsedPlan, template: TemplateConfig): Promise<string> {
+  private async generateWithGemini(templateId: string, plan: ParsedPlan, template: TemplateConfig): Promise<string> {
     const isHtml = templateId.includes('html')
     const isCss = templateId.includes('css')
     const fileType = isHtml ? 'HTML' : isCss ? 'CSS' : 'JavaScript'
     const ext = isHtml ? 'html' : isCss ? 'css' : 'js'
 
-    const response = await this.client!.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      system: template.starterPrompt + '\n\nIMPORTANT: Return ONLY the file content, no markdown, no explanation, no code fences.',
-      messages: [{
-        role: 'user',
-        content: `Generate a starter ${fileType} file for:
+    const model = this.genAI!.getGenerativeModel({
+      model: 'gemini-2.0-flash',
+      systemInstruction: template.starterPrompt + '\n\nIMPORTANT: Return ONLY the file content, no markdown, no explanation, no code fences.',
+    })
+
+    const result = await model.generateContent(
+      `Generate a starter ${fileType} file for:
 Name: ${plan.name}
 Description: ${plan.description}
 Features: ${plan.features.join(', ')}
 
-Well-structured .${ext} file with placeholder content and helpful comments. Beginner-friendly.`,
-      }],
-    })
-    return response.content[0].type === 'text' ? response.content[0].text : this.getFallbackContent(templateId, plan)
+Well-structured .${ext} file with placeholder content and helpful comments. Beginner-friendly.`
+    )
+    return result.response.text()
   }
 
   private getFallbackContent(templateId: string, plan: ParsedPlan): string {
