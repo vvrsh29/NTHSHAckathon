@@ -1,25 +1,30 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Terminal, Star, AlertCircle, MessageSquare, ArrowRight, Rocket, Wrench, X } from 'lucide-react'
+import { AlertCircle, ArrowRight, Wrench, X, Bot, ChevronRight } from 'lucide-react'
 import confetti from 'canvas-confetti'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
 import type { ClientMessage, Step, GeneratedFile, MentorMessageType, Phase, ServerMessage } from '../../shared/types'
 import type { MentorMessage } from '../hooks/useMentor'
 import CommandPrompt from './CommandPrompt'
 import CodeExplainer from './CodeExplainer'
 
-const iconMap: Record<MentorMessageType, React.ElementType> = {
-  explanation: MessageSquare,
-  instruction: Terminal,
-  encouragement: Star,
-  error_help: AlertCircle,
+const badgeVariant: Record<MentorMessageType, string> = {
+  explanation: 'bg-transparent border-border text-muted-foreground',
+  instruction: 'bg-transparent border-border text-blue-600 dark:text-blue-400',
+  encouragement: 'bg-transparent border-border text-emerald-600 dark:text-emerald-400',
+  error_help: 'bg-transparent border-border text-destructive',
 }
 
-const styleMap: Record<MentorMessageType, { bubble: string; text: string; label: string }> = {
-  explanation: { bubble: 'bg-surface-2', text: 'text-white', label: 'text-gray-400' },
-  instruction: { bubble: 'bg-blue-900/50', text: 'text-blue-200', label: 'text-blue-400' },
-  encouragement: { bubble: 'bg-green-900/50', text: 'text-green-200', label: 'text-green-400' },
-  error_help: { bubble: 'bg-red-900/50', text: 'text-red-200', label: 'text-red-400' },
+const labelText: Record<MentorMessageType, string> = {
+  explanation: 'Mentor',
+  instruction: 'Instruction',
+  encouragement: 'Nice work',
+  error_help: 'Error',
 }
 
 interface Props {
@@ -48,20 +53,15 @@ export default function MentorPanel({
   const [panicMessage, setPanicMessage] = useState('')
   const [showAutoFix, setShowAutoFix] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const lastErrorIdRef = useRef<string | null>(null)
 
-  // Listen for phase_complete → confetti
   useEffect(() => {
     const unsub = addListener((msg) => {
-      if (msg.type === 'phase_complete') {
-        fireConfetti(msg.phase)
-      }
+      if (msg.type === 'phase_complete') fireConfetti(msg.phase)
     })
     return unsub
   }, [addListener])
 
-  const lastErrorIdRef = useRef<string | null>(null)
-
-  // Listen for error_help → panic interceptor (only on new error messages)
   useEffect(() => {
     const lastError = messages.filter((m) => m.messageType === 'error_help').at(-1)
     if (lastError && lastError.id !== lastErrorIdRef.current) {
@@ -72,9 +72,10 @@ export default function MentorPanel({
     }
   }, [messages])
 
-  // Auto-scroll
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
   }, [messages, isThinking])
 
   const handleAsk = () => {
@@ -100,7 +101,8 @@ export default function MentorPanel({
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* Panic interceptor overlay */}
+
+      {/* Panic overlay */}
       <AnimatePresence>
         {panicVisible && (
           <motion.div
@@ -108,35 +110,32 @@ export default function MentorPanel({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="absolute inset-0 z-20 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center"
+            transition={{ duration: 0.15 }}
+            className="absolute inset-0 z-20 bg-background/90 backdrop-blur-sm flex items-center justify-center p-6"
           >
             <motion.div
-              initial={{ scale: 0.9, y: 16 }}
+              initial={{ scale: 0.96, y: 8 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 8 }}
-              className="bg-red-950/90 border border-red-500/40 rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+              exit={{ scale: 0.96 }}
+              className="bg-card border rounded-lg p-5 max-w-xs w-full shadow-lg"
             >
-              <AlertCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-              <h3 className="text-white font-semibold text-base mb-2">Something went wrong</h3>
-              <div className="text-red-200 text-sm prose prose-invert prose-sm max-w-none mb-4">
-                <ReactMarkdown>{panicMessage}</ReactMarkdown>
+              <div className="flex items-start gap-3 mb-3">
+                <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium mb-1">Something went wrong</p>
+                  <div className="text-xs text-muted-foreground prose prose-sm prose-zinc dark:prose-invert max-w-none">
+                    <ReactMarkdown>{panicMessage}</ReactMarkdown>
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-2 justify-center">
-                <button
-                  onClick={handleAutoFix}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-xl transition"
-                >
-                  <Wrench className="w-4 h-4" />
+              <div className="flex gap-2">
+                <Button size="sm" variant="destructive" onClick={handleAutoFix} className="flex-1 gap-1.5 h-8 text-xs">
+                  <Wrench className="w-3 h-3" />
                   Auto-Fix
-                </button>
-                <button
-                  onClick={() => setPanicVisible(false)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm rounded-xl transition"
-                >
-                  <X className="w-4 h-4" />
-                  Dismiss
-                </button>
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setPanicVisible(false)} className="h-8 w-8 p-0">
+                  <X className="w-3 h-3" />
+                </Button>
               </div>
             </motion.div>
           </motion.div>
@@ -144,21 +143,30 @@ export default function MentorPanel({
       </AnimatePresence>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-5">
         {!hasContent && (
-          <div className="flex flex-col items-center justify-center h-full text-center py-16">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-600/20 mb-4">
-              <Rocket className="w-7 h-7 text-brand-400" />
+          <div className="flex flex-col items-center justify-center h-full text-center py-16 gap-3">
+            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-muted">
+              <Bot className="w-4 h-4 text-muted-foreground" />
             </div>
-            <p className="text-gray-300 font-medium text-base mb-1">Your AI mentor is ready.</p>
-            <p className="text-gray-500 text-sm">Start a project to begin.</p>
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Mentor ready</p>
+              <p className="text-xs text-muted-foreground">Launch a project to get started.</p>
+            </div>
           </div>
         )}
 
+        {/* Current step */}
         {currentStep && (
-          <div className="rounded-lg border border-brand-500/30 bg-brand-500/5 p-4 mb-4">
-            <h3 className="text-brand-300 font-semibold text-sm mb-1">{currentStep.title}</h3>
-            <p className="text-gray-300 text-sm">{currentStep.explanation}</p>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Current step</span>
+            </div>
+            <div className="pl-5 space-y-1">
+              <p className="text-sm font-medium">{currentStep.title}</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">{currentStep.explanation}</p>
+            </div>
           </div>
         )}
 
@@ -174,79 +182,74 @@ export default function MentorPanel({
           <CodeExplainer files={generatedFiles.files} explanation={generatedFiles.explanation} />
         )}
 
-        {messages.map((msg) => {
-          const Icon = iconMap[msg.messageType]
-          const styles = styleMap[msg.messageType]
-          return (
-            <div key={msg.id} className={`rounded-lg p-3 ${styles.bubble}`}>
-              <div className="flex items-center gap-2 mb-1">
-                <Icon className={`w-4 h-4 ${styles.label}`} />
-                <span className={`text-xs capitalize ${styles.label}`}>
-                  {msg.messageType.replace('_', ' ')}
+        {/* Message feed */}
+        {messages.map((msg, i) => (
+          <div key={msg.id} className="space-y-1.5">
+            {i > 0 && <Separator className="my-1" />}
+            <div className="flex items-center gap-2">
+              <span className={cn(
+                'text-[10px] font-medium uppercase tracking-wider',
+                msg.messageType === 'error_help' ? 'text-destructive' :
+                msg.messageType === 'encouragement' ? 'text-emerald-600 dark:text-emerald-400' :
+                msg.messageType === 'instruction' ? 'text-blue-600 dark:text-blue-400' :
+                'text-muted-foreground'
+              )}>
+                {labelText[msg.messageType]}
+              </span>
+              {msg.streaming && (
+                <span className="flex gap-0.5">
+                  <span className="w-1 h-1 rounded-full bg-muted-foreground animate-bounce [animation-delay:0ms]" />
+                  <span className="w-1 h-1 rounded-full bg-muted-foreground animate-bounce [animation-delay:100ms]" />
+                  <span className="w-1 h-1 rounded-full bg-muted-foreground animate-bounce [animation-delay:200ms]" />
                 </span>
-                {msg.streaming && (
-                  <span className="text-xs text-gray-500 animate-pulse ml-auto">typing…</span>
-                )}
-              </div>
-              <div className={`text-sm prose prose-invert prose-sm max-w-none ${styles.text}`}>
-                <ReactMarkdown>{msg.content}</ReactMarkdown>
-              </div>
+              )}
             </div>
-          )
-        })}
+            <div className="text-sm text-foreground prose prose-sm prose-zinc dark:prose-invert max-w-none leading-relaxed">
+              <ReactMarkdown>{msg.content}</ReactMarkdown>
+            </div>
+          </div>
+        ))}
 
         {isThinking && (
-          <div className="flex items-center gap-2 text-gray-400 text-sm py-1">
-            <span className="inline-flex gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-bounce [animation-delay:0ms]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-bounce [animation-delay:150ms]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-400 animate-bounce [animation-delay:300ms]" />
+          <div className="flex items-center gap-2 py-1">
+            <span className="flex gap-0.5">
+              <span className="w-1 h-1 rounded-full bg-muted-foreground animate-bounce [animation-delay:0ms]" />
+              <span className="w-1 h-1 rounded-full bg-muted-foreground animate-bounce [animation-delay:100ms]" />
+              <span className="w-1 h-1 rounded-full bg-muted-foreground animate-bounce [animation-delay:200ms]" />
             </span>
-            Your mentor is thinking...
+            <span className="text-xs text-muted-foreground">Thinking…</span>
           </div>
         )}
       </div>
 
       {/* Bottom bar */}
-      <div className="flex-none border-t border-white/10 p-3 space-y-2">
+      <div className="flex-none border-t p-3 space-y-2 bg-background">
         <div className="flex gap-2">
           {currentStep && (
-            <button
-              onClick={handleNextStep}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-brand-600 hover:bg-brand-500 text-white text-sm font-medium transition flex-1 justify-center"
-            >
-              Next Step
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            <Button size="sm" onClick={handleNextStep} className="flex-1 h-8 text-xs gap-1.5">
+              Next step
+              <ArrowRight className="w-3 h-3" />
+            </Button>
           )}
           {showAutoFix && (
-            <button
-              onClick={handleAutoFix}
-              className="flex items-center gap-2 px-3 py-2 rounded-full bg-red-700 hover:bg-red-600 text-white text-sm font-medium transition"
-              title="Automatically run the fix command"
-            >
-              <Wrench className="w-4 h-4" />
+            <Button size="sm" variant="destructive" onClick={handleAutoFix} className="h-8 text-xs gap-1.5">
+              <Wrench className="w-3 h-3" />
               Auto-Fix
-            </button>
+            </Button>
           )}
         </div>
-
         <div className="flex gap-2">
           <input
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAsk()}
-            placeholder="Ask me anything..."
-            className="flex-1 bg-surface-2 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-brand-500/50"
+            placeholder="Ask anything…"
+            className="flex-1 h-8 px-3 text-xs bg-muted border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
-          <button
-            onClick={handleAsk}
-            disabled={isThinking || !question.trim()}
-            className="px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-500 disabled:opacity-40 transition"
-          >
+          <Button size="sm" onClick={handleAsk} disabled={isThinking || !question.trim()} className="h-8 text-xs px-3">
             Ask
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -254,25 +257,7 @@ export default function MentorPanel({
 }
 
 function fireConfetti(phase: Phase) {
-  const colors: Record<Phase, string[]> = {
-    setup: ['#a78bfa', '#7c3aed'],
-    scaffold: ['#34d399', '#059669'],
-    build: ['#60a5fa', '#2563eb'],
-    style: ['#f472b6', '#db2777'],
-    deploy: ['#fbbf24', '#d97706', '#a78bfa'],
-  }
-  const cols = colors[phase] || ['#a78bfa', '#60a5fa']
-
-  confetti({
-    particleCount: 120,
-    spread: 80,
-    origin: { y: 0.6 },
-    colors: cols,
-  })
-  setTimeout(() => {
-    confetti({ particleCount: 60, spread: 60, origin: { x: 0.2, y: 0.5 }, colors: cols })
-  }, 200)
-  setTimeout(() => {
-    confetti({ particleCount: 60, spread: 60, origin: { x: 0.8, y: 0.5 }, colors: cols })
-  }, 400)
+  confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } })
+  setTimeout(() => confetti({ particleCount: 50, spread: 55, origin: { x: 0.2, y: 0.5 } }), 200)
+  setTimeout(() => confetti({ particleCount: 50, spread: 55, origin: { x: 0.8, y: 0.5 } }), 400)
 }
