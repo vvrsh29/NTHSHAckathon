@@ -1,55 +1,52 @@
 # LaunchPad
 
-A locally-hosted web app that teaches beginners to code by wrapping a real terminal in a guided two-panel UI. Left panel: real terminal in the browser (node-pty + xterm.js). Right panel: AI mentor powered by Claude that explains what's happening in plain language.
+**Learn Claude Code the right way** — a guided, interactive web app that teaches you how to use the terminal and build projects with AI assistance.
+
+LaunchPad wraps a real terminal in a two-panel browser UI. You type real commands on the left; an AI mentor explains what's happening on the right. Three course tracks take you from "what's a terminal?" to CLAUDE.md best practices and MCP integrations.
+
+## What it does
+
+1. **Landing page** with an animated terminal demo showing what Claude Code looks like in action
+2. **6-stage onboarding** — name, role, experience level, API key, project idea, confirmation
+3. **Three course tracks:**
+   - **Beginner** (~30 min) — terminal basics, environment setup, Git/Node/VS Code, install Claude Code, build your first project
+   - **Intermediate** (~15 min) — quick env check, jump to Claude Code, build something real, tips & tricks
+   - **Advanced** (~10 min) — CLAUDE.md best practices, slash commands, MCP servers, hooks, agent workflows
+4. **Dashboard** — resizable terminal + mentor panels, step-by-step guidance, command suggestions, progress tracking
+5. **Home screen** — progress ring, phase breakdown, environment status, quick actions, resource links
 
 ## Quick Start
 
-1. **Install dependencies**
-   ```bash
-   npm install
-   ```
+```bash
+npm install
+npm run dev
+```
 
-2. **Set your Anthropic API key**
-   ```bash
-   cp .env.example .env
-   # Edit .env and add your ANTHROPIC_API_KEY
-   ```
-
-3. **Start the app**
-   ```bash
-   npm run dev
-   ```
-
-4. Open [http://localhost:5173](http://localhost:5173)
+Open [http://localhost:3000](http://localhost:3000)
 
 ## Architecture
 
-- **Server** (`server/`): Express + WebSocket on port 3456, node-pty shell spawner, step engine (state machine), mentor engine (Claude API streaming), code generator
-- **Client** (`client/`): React 19 + Vite + Tailwind CSS, xterm.js terminal, streaming mentor chat panel
-- **Shared** (`shared/types.ts`): WebSocket message type contract between client and server
-
-## Tech Stack
-
-| Layer | Tech |
+| Layer | Stack |
 |---|---|
-| Backend | Node.js, Express, ws, node-pty, @anthropic-ai/sdk |
-| Frontend | React 19, Vite, xterm.js, Tailwind CSS v4, Framer Motion |
-| Language | TypeScript (strict) |
-| AI | Claude claude-sonnet-4-20250514 |
+| Server | Node.js, Express, ws, node-pty, SSH (port 2222) |
+| Client | React 19, Vite, xterm.js, Tailwind CSS v4, shadcn/ui, Framer Motion |
+| AI | Google Gemini (mentor engine) |
+| Language | TypeScript (strict, ESM) |
 
-## Environment Variables
-
-| Variable | Default | Description |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | — | Your Anthropic API key (required for AI features) |
-| `PORT` | `3456` | Backend server port |
-| `PROJECT_DIR` | `~/launchpad-projects` | Where generated projects are saved |
+- `server/` — Express + WebSocket server (port 3001), PTY/SSH terminal manager, step engine, mentor engine, course loader, environment detector
+- `client/` — React SPA with landing page, onboarding wizard, home dashboard, and learning dashboard (terminal + mentor panels)
+- `shared/types.ts` — WebSocket message contract between client and server
 
 ## Development
 
 ```bash
-npm run dev          # Start both server + client
-npm run dev:server   # Server only (port 3456)
-npm run dev:client   # Client only (port 5173)
-npm run typecheck    # TypeScript type check
+npm run dev          # Start both server (3001) + client (3000)
+npm run dev:server   # Server only
+npm run dev:client   # Client only
 ```
+
+You can also connect to the terminal directly: `ssh localhost -p 2222`
+
+---
+
+Built at a hackathon with Claude Code.
