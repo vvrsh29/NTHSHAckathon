@@ -66,6 +66,7 @@ export type ServerMessage =
   | { type: 'phase_complete'; phase: Phase }
   | { type: 'env_detection'; results: EnvDetectionResult }
   | { type: 'course_started'; level: CourseLevel; phases: PhaseDefinition[] }
+  | { type: 'course_complete' }
 
 // --- Enums / Subtypes ---
 

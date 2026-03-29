@@ -103,12 +103,10 @@ const LEVELS: Array<{
   },
 ]
 
-const QUICK_PICKS = ['Todo App', 'Portfolio Site', 'Weather App', 'Chat Bot']
-
 const ROLES = ['Student', 'Professional', 'Hobbyist', 'Curious']
 
-// Stages: 0=Welcome, 1=AboutYou, 2=Level, 3=Topic, 4=EnvCheck, 5=ProjectDir, 6=ApiKey, 7=BuildIdea(beginner only)
-const TOTAL_STAGES = 8
+// Stages: 0=Welcome, 1=AboutYou, 2=Level, 3=Topic, 4=EnvCheck, 5=ProjectDir, 6=ApiKey
+const TOTAL_STAGES = 7
 
 export default function Onboarding({ onComplete, onBack }: Props) {
   const [stage, setStage] = useState(0)
@@ -140,13 +138,8 @@ export default function Onboarding({ onComplete, onBack }: Props) {
     onComplete({ level: level!, apiKey: apiKey.trim(), buildIdea: idea.trim(), userName: userName.trim(), userRole, projectDir: projectDir.trim() || '~/launchpad-projects', courseTopic })
   }
 
-  // After stage 6 (API Key), non-beginners skip stage 7 (build idea)
   const handleContinueFromApiKey = () => {
-    if (level === 'beginner') {
-      setStage(7)
-    } else {
-      finish('')
-    }
+    finish('')
   }
 
   // Reset topic when level changes
@@ -165,8 +158,7 @@ export default function Onboarding({ onComplete, onBack }: Props) {
     }
   }, [stage, envResults])
 
-  // How many stages are visible for this level (stage 7 is beginner-only)
-  const visibleStages = level === 'beginner' ? TOTAL_STAGES : TOTAL_STAGES - 1
+  const visibleStages = TOTAL_STAGES
 
   // Slide animation
   const slideVariants = {
@@ -710,74 +702,6 @@ export default function Onboarding({ onComplete, onBack }: Props) {
             </motion.div>
           )}
 
-          {/* ── Stage 7: What to Build (Beginner only) ── */}
-          {stage === 7 && (
-            <motion.div
-              key="stage-7"
-              variants={slideVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={{ duration: 0.35, ease: 'easeInOut' }}
-              className="max-w-md w-full space-y-8"
-            >
-              <div className="text-center space-y-2">
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                  What would you like to build?
-                </h2>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  We'll use Claude Code to build this together. Don't worry, you can change your
-                  mind later.
-                </p>
-              </div>
-
-              {/* Text input */}
-              <input
-                type="text"
-                value={buildIdea}
-                onChange={(e) => setBuildIdea(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && buildIdea.trim()) finish()
-                }}
-                placeholder="A todo app, a personal website, a weather dashboard..."
-                className="w-full h-11 px-4 text-sm bg-background border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition"
-                autoFocus
-              />
-
-              {/* Quick-pick chips */}
-              <div className="flex flex-wrap gap-2 justify-center">
-                {QUICK_PICKS.map((pick) => (
-                  <button
-                    key={pick}
-                    onClick={() => setBuildIdea(pick)}
-                    className={cn(
-                      'px-3.5 py-1.5 text-xs rounded-full border transition-all duration-150',
-                      buildIdea === pick
-                        ? 'border-foreground bg-accent text-foreground'
-                        : 'border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground'
-                    )}
-                  >
-                    {pick}
-                  </button>
-                ))}
-              </div>
-
-              {/* Buttons */}
-              <div className="flex items-center justify-center gap-3">
-                <Button variant="ghost" onClick={() => finish('')} className="text-muted-foreground">
-                  Skip
-                </Button>
-                <Button
-                  size="lg"
-                  onClick={() => finish()}
-                  disabled={!buildIdea.trim()}
-                  className="gap-2 px-8"
-                >
-                  Let's go! <ArrowRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </motion.div>
-          )}
         </AnimatePresence>
       </div>
     </div>

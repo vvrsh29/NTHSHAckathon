@@ -91,6 +91,7 @@ export class StepEngine {
           content:
             '**Congratulations!** You completed all phases! You just learned to use Claude Code from the terminal. You are officially ready to build anything!',
         })
+        send(this.ws, { type: 'course_complete' })
         return
       }
     }

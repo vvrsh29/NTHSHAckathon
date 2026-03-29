@@ -10,6 +10,7 @@ import LandingPage from './components/LandingPage'
 import LoginScreen from './components/LoginScreen'
 import Onboarding from './components/Onboarding'
 import HomeScreen from './components/HomeScreen'
+import CompletionScreen from './components/CompletionScreen'
 import InterfaceGuide from './components/InterfaceGuide'
 import StepIndicator from './components/StepIndicator'
 import ModeSwitch from './components/ModeSwitch'
@@ -19,7 +20,7 @@ import { cn } from '@/lib/utils'
 import type { ServerMessage, CourseLevel, PhaseDefinition, Step, EnvDetectionResult } from '../shared/types'
 
 export default function App() {
-  const [screen, setScreen] = useState<'landing' | 'login' | 'onboarding' | 'home' | 'dashboard'>(() => {
+  const [screen, setScreen] = useState<'landing' | 'login' | 'onboarding' | 'home' | 'dashboard' | 'complete'>(() => {
     try {
       const savedName = localStorage.getItem('launchpad-user-name')
       const savedEmail = localStorage.getItem('launchpad-user-email')
@@ -69,6 +70,9 @@ export default function App() {
         break
       case 'env_detection':
         setEnvResults(msg.results)
+        break
+      case 'course_complete':
+        setScreen('complete')
         break
       // phase_complete handled by MentorPanel / listeners
     }
@@ -246,6 +250,21 @@ export default function App() {
               </ResizablePanelGroup>
             </div>
           </div>
+        </motion.div>
+      )}
+
+      {screen === 'complete' && (
+        <motion.div
+          key="complete"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <CompletionScreen
+            userName={userName}
+            onGoHome={() => setScreen('home')}
+          />
         </motion.div>
       )}
     </AnimatePresence>
