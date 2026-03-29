@@ -66,12 +66,14 @@ export default function MentorPanel({
   }, [currentStep, isThinking])
 
   useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      if (scrollRef.current) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-      }
-    })
-    return () => cancelAnimationFrame(frame)
+    const el = scrollRef.current
+    if (!el) return
+    const isNearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 100
+    if (isNearBottom) {
+      requestAnimationFrame(() => {
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+      })
+    }
   }, [messages, isThinking])
 
   const handleAsk = () => {
@@ -139,8 +141,8 @@ export default function MentorPanel({
         )}
       </AnimatePresence>
 
-      {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-5">
+      {/* Scrollable messages feed */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-5 min-h-0">
         {!hasContent && (
           <div className="flex flex-col items-center justify-center h-full text-center py-16 gap-3">
             <div className="flex items-center justify-center w-9 h-9 rounded-full bg-muted">
@@ -151,28 +153,6 @@ export default function MentorPanel({
               <p className="text-xs text-muted-foreground">Launch a project to get started.</p>
             </div>
           </div>
-        )}
-
-        {/* Current step */}
-        {currentStep && (
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Current step</span>
-            </div>
-            <div className="pl-5 space-y-1">
-              <p className="text-sm font-medium">{currentStep.title}</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">{currentStep.explanation}</p>
-            </div>
-          </div>
-        )}
-
-        {commandSuggestion && (
-          <CommandPrompt
-            command={commandSuggestion.command}
-            explanation={commandSuggestion.explanation}
-            send={send}
-          />
         )}
 
         {/* Message feed */}
@@ -215,26 +195,51 @@ export default function MentorPanel({
         )}
       </div>
 
-      {/* Bottom bar */}
-      <div className="flex-none border-t p-3 space-y-2 bg-background">
+      {/* Pinned bottom section: step card + command prompt + controls */}
+      <div className="flex-none border-t bg-background">
+        {/* Compact current step card */}
         {currentStep && (
-          <Button variant="default" onClick={handleNextStep} className={cn("w-full gap-2", waitingForNext && "animate-pulse")}>
-            Next step
-            <ArrowRight className="w-4 h-4" />
-          </Button>
+          <div className="px-3 pt-3 pb-2">
+            <div className="flex items-center gap-2 mb-1">
+              <ChevronRight className="w-3 h-3 text-muted-foreground" />
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Current step</span>
+            </div>
+            <p className="text-xs font-medium pl-5">{currentStep.title}</p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed pl-5 mt-0.5">{currentStep.explanation}</p>
+          </div>
         )}
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAsk()}
-            placeholder="Ask anything…"
-            className="flex-1 h-8 px-3 text-xs bg-muted border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-          />
-          <Button size="sm" onClick={handleAsk} disabled={isThinking || !question.trim()} className="h-8 text-xs px-3">
-            Ask
-          </Button>
+
+        {/* Command prompt */}
+        {commandSuggestion && (
+          <div className="px-3 pb-2">
+            <CommandPrompt
+              command={commandSuggestion.command}
+              send={send}
+            />
+          </div>
+        )}
+
+        {/* Next step + ask input */}
+        <div className="p-3 pt-2 space-y-2">
+          {currentStep && (
+            <Button variant="default" onClick={handleNextStep} className={cn("w-full gap-2", waitingForNext && "animate-pulse")}>
+              Next step
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          )}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAsk()}
+              placeholder="Ask anything…"
+              className="flex-1 h-8 px-3 text-xs bg-muted border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            <Button size="sm" onClick={handleAsk} disabled={isThinking || !question.trim()} className="h-8 text-xs px-3">
+              Ask
+            </Button>
+          </div>
         </div>
       </div>
     </div>

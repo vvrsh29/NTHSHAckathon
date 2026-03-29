@@ -6,7 +6,6 @@ import type { ClientMessage } from '../../shared/types'
 
 interface Props {
   command: string
-  explanation: string
   send?: (msg: ClientMessage) => void
 }
 
@@ -57,7 +56,7 @@ function Token({ token }: { token: string }) {
   )
 }
 
-export default function CommandPrompt({ command, explanation, send }: Props) {
+export default function CommandPrompt({ command, send }: Props) {
   const [copied, setCopied] = useState(false)
   const [ghosted, setGhosted] = useState(false)
   const tokens = command.split(' ').filter(Boolean)
@@ -92,7 +91,6 @@ export default function CommandPrompt({ command, explanation, send }: Props) {
           {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground leading-relaxed">{explanation}</p>
       <button
         onClick={handleGhostType}
         disabled={ghosted}
