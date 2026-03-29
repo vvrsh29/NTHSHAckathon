@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LaunchPad — Learn Claude Code the Right Way</title>
+  <meta name="description" content="A guided, interactive web app that teaches you how to use the terminal and build projects with AI assistance. Real terminal. Real commands. Real learning." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Favicon (inline SVG data URI) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2310b981'/><text x='7' y='24' font-size='22' fill='white' font-family='monospace'>%3E_</text></svg>" />
+</head>
+<body>
+
+  <!-- ===== HERO ===== -->
+  <section class="hero" id="top">
+    <div class="hero-bg"></div>
+    <div class="hero-grid"></div>
+
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="hero-badge-dot"></span>
+        Open Source
+      </div>
+
+      <h1>
+        Learn <span class="gradient-text">Claude Code</span><br />
+        the Right Way
+      </h1>
+
+      <p>
+        A guided, interactive environment that teaches you how to use the terminal and build real projects with AI assistance. No prior experience needed.
+      </p>
+
+      <div class="hero-buttons">
+        <a href="#get-started" class="btn-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          Get Started
+        </a>
+        <a href="https://github.com/vvrsh29/NTHSHAckathon" target="_blank" rel="noopener noreferrer" class="btn-secondary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+          View on GitHub
+        </a>
+      </div>
+    </div>
+
+    <div class="hero-scroll">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
+    </div>
+  </section>
+
+  <!-- ===== ABOUT ===== -->
+  <section class="about" id="about">
+    <div class="about-inner animate-on-scroll">
+      <div class="about-text">
+        <span class="section-label">What is LaunchPad?</span>
+        <h2 class="section-title">The training wheels for AI-assisted coding</h2>
+        <p class="section-subtitle" style="margin-bottom: 1.5rem;">
+          LaunchPad wraps a real terminal in a two-panel browser UI. You type real commands on the left; an AI mentor explains what's happening on the right.
+        </p>
+        <p class="about-description">
+          Most people struggle to get started with Claude Code because they've never used a terminal before. LaunchPad solves that. Three course tracks take you from "what's a terminal?" to CLAUDE.md best practices and MCP integrations — all in a guided, step-by-step experience that runs on your own machine.
+        </p>
+      </div>
+
+      <div class="about-terminal">
+        <div class="terminal-header">
+          <span class="terminal-dot red"></span>
+          <span class="terminal-dot yellow"></span>
+          <span class="terminal-dot green"></span>
+          <span class="terminal-title">launchpad &mdash; terminal</span>
+        </div>
+        <div class="terminal-body">
+          <div><span class="prompt">~ $</span> <span class="command">mkdir my-project</span></div>
+          <div><span class="prompt">~ $</span> <span class="command">cd my-project</span></div>
+          <div><span class="prompt">my-project $</span> <span class="command">claude</span></div>
+          <div><span class="output">Claude Code v1.0</span></div>
+          <div><span class="output">Welcome! How can I help?</span></div>
+          <div>&nbsp;</div>
+          <div><span class="prompt">&gt;</span> <span class="command">Build me a portfolio site</span><span class="cursor"></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FEATURES ===== -->
+  <section class="features" id="features">
+    <div class="features-header animate-on-scroll">
+      <span class="section-label">Features</span>
+      <h2 class="section-title">Everything you need to learn</h2>
+      <p class="section-subtitle">Three pillars that make LaunchPad different from watching yet another tutorial video.</p>
+    </div>
+
+    <div class="features-grid animate-on-scroll">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        </div>
+        <h3>Real Terminal</h3>
+        <p>No simulations or sandboxes. LaunchPad runs a real shell on your machine. Every command you type creates real files and produces real results. You learn the actual tool, not a toy version.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6V2H8"/><path d="m8 18-4 4V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2Z"/><path d="M2 12h2"/><path d="M9 11v2"/><path d="M15 11v2"/><path d="M20 12h2"/></svg>
+        </div>
+        <h3>AI Mentor</h3>
+        <p>An always-on AI assistant that explains every command in plain language as you go. Confused about what just happened? The mentor panel breaks it down — no jargon, no assumptions about what you know.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </div>
+        <h3>Guided Courses</h3>
+        <p>Structured, step-by-step tracks that take you from zero to confident. Each course is broken into clear phases with progress tracking, so you always know where you are and what's next.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== COURSES ===== -->
+  <section class="courses" id="courses">
+    <div class="courses-header animate-on-scroll">
+      <span class="section-label">Course Tracks</span>
+      <h2 class="section-title">Pick your starting point</h2>
+      <p class="section-subtitle">Whether you've never opened a terminal or you're an experienced dev exploring Claude Code, there's a track for you.</p>
+    </div>
+
+    <div class="courses-grid animate-on-scroll">
+      <!-- Beginner -->
+      <div class="course-card beginner">
+        <span class="course-level beginner">Beginner</span>
+        <h3>Terminal to First Project</h3>
+        <p class="course-duration">~30 minutes</p>
+        <ul class="course-topics">
+          <li>Terminal basics and navigation</li>
+          <li>Environment setup (Git, Node.js, VS Code)</li>
+          <li>Installing Claude Code</li>
+          <li>Building your first project from scratch</li>
+          <li>Understanding files, folders, and paths</li>
+        </ul>
+      </div>
+
+      <!-- Intermediate -->
+      <div class="course-card intermediate">
+        <span class="course-level intermediate">Intermediate</span>
+        <h3>Build Something Real</h3>
+        <p class="course-duration">~15 minutes</p>
+        <ul class="course-topics">
+          <li>Quick environment check</li>
+          <li>Jump straight into Claude Code</li>
+          <li>Build a real project with AI assistance</li>
+          <li>Tips and tricks for effective prompting</li>
+          <li>Workflow best practices</li>
+        </ul>
+      </div>
+
+      <!-- Advanced -->
+      <div class="course-card advanced">
+        <span class="course-level advanced">Advanced</span>
+        <h3>Power User Techniques</h3>
+        <p class="course-duration">~10 minutes</p>
+        <ul class="course-topics">
+          <li>CLAUDE.md best practices</li>
+          <li>Slash commands and shortcuts</li>
+          <li>MCP server integrations</li>
+          <li>Hooks and automation</li>
+          <li>Multi-agent workflows</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== GET STARTED ===== -->
+  <section class="get-started" id="get-started">
+    <div class="get-started-inner animate-on-scroll">
+      <div class="get-started-header">
+        <span class="section-label">Get Started</span>
+        <h2 class="section-title">Up and running in 60 seconds</h2>
+        <p class="section-subtitle">LaunchPad runs locally on your machine. Clone the repo, install dependencies, and you're in.</p>
+      </div>
+
+      <div class="code-block-wrapper">
+        <div class="code-block-header">
+          <span class="code-block-title">terminal</span>
+          <button class="copy-button" id="copyBtn" aria-label="Copy to clipboard">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="copy-icon"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="check-icon" style="display:none"><polyline points="20 6 9 17 4 12"/></svg>
+            <span class="copy-text">Copy</span>
+          </button>
+        </div>
+        <div class="code-block-body">
+          <code>
+<span class="code-comment"># Clone the repository</span>
+<span class="code-command">git clone</span> https://github.com/vvrsh29/NTHSHAckathon.git launchpad
+
+<span class="code-comment"># Navigate into the project</span>
+<span class="code-command">cd</span> launchpad
+
+<span class="code-comment"># Install dependencies</span>
+<span class="code-command">npm install</span>
+
+<span class="code-comment"># Start the app</span>
+<span class="code-command">npm run dev</span>
+          </code>
+        </div>
+      </div>
+
+      <p class="get-started-note">
+        Then open <a href="http://localhost:3000">http://localhost:3000</a> in your browser. That's it.<br />
+        Requires <strong>Node.js 18+</strong> and an <strong>Anthropic API key</strong> (set as <code style="font-family: var(--font-mono); background: var(--zinc-800); padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.8125rem;">ANTHROPIC_API_KEY</code> env var).
+      </p>
+
+      <div class="steps-list">
+        <div class="step-item">
+          <div class="step-number">1</div>
+          <div class="step-text">
+            <h4>Clone & Install</h4>
+            <p>Pull the repo and install dependencies with npm. Takes about 30 seconds.</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-number">2</div>
+          <div class="step-text">
+            <h4>Set Your API Key</h4>
+            <p>Export your Anthropic API key as an environment variable, or enter it in the app during onboarding.</p>
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-number">3</div>
+          <div class="step-text">
+            <h4>Start Learning</h4>
+            <p>Pick your track, follow the guided steps, and build something real with Claude Code.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-logo">Launch<span>Pad</span></div>
+      <p class="footer-text">Built at a hackathon with Claude Code.</p>
+      <div class="footer-links">
+        <a href="https://github.com/vvrsh29/NTHSHAckathon" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="#top">Back to top</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===== INLINE JS: Copy button + scroll animations ===== -->
+  <script>
+    // Copy button
+    (function () {
+      var btn = document.getElementById('copyBtn');
+      if (!btn) return;
+
+      var commands = [
+        'git clone https://github.com/vvrsh29/NTHSHAckathon.git launchpad',
+        'cd launchpad',
+        'npm install',
+        'npm run dev'
+      ].join('\n');
+
+      btn.addEventListener('click', function () {
+        navigator.clipboard.writeText(commands).then(function () {
+          btn.classList.add('copied');
+          btn.querySelector('.copy-icon').style.display = 'none';
+          btn.querySelector('.check-icon').style.display = 'block';
+          btn.querySelector('.copy-text').textContent = 'Copied!';
+
+          setTimeout(function () {
+            btn.classList.remove('copied');
+            btn.querySelector('.copy-icon').style.display = 'block';
+            btn.querySelector('.check-icon').style.display = 'none';
+            btn.querySelector('.copy-text').textContent = 'Copy';
+          }, 2000);
+        });
+      });
+    })();
+
+    // Scroll-triggered fade-in animations
+    (function () {
+      var elements = document.querySelectorAll('.animate-on-scroll');
+      if (!elements.length) return;
+
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+          }
+        });
+      }, { threshold: 0.1 });
+
+      elements.forEach(function (el) {
+        observer.observe(el);
+      });
+    })();
+  </script>
+
+</body>
+</html>

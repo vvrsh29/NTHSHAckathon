@@ -49,4 +49,17 @@ You can also connect to the terminal directly: `ssh localhost -p 2222`
 
 ---
 
+## Deploying the Landing Page
+
+The `landing/` directory contains a standalone static page deployable to Vercel:
+
+```bash
+cd landing
+vercel
+```
+
+Or connect the `landing/` directory as the root in Vercel project settings.
+
+---
+
 Built at a hackathon with Claude Code.
