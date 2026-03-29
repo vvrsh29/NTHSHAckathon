@@ -183,72 +183,86 @@
     <div class="get-started-inner animate-on-scroll">
       <div class="get-started-header">
         <span class="section-label">Get Started</span>
-        <h2 class="section-title">Up and running in 60 seconds</h2>
-        <p class="section-subtitle">LaunchPad runs locally on your machine. Clone the repo, install dependencies, and you're in.</p>
+        <h2 class="section-title">Ready? Here's what to do.</h2>
       </div>
 
-      <div class="code-block-wrapper">
-        <div class="code-block-header">
-          <span class="code-block-title">terminal</span>
-          <button class="copy-button" id="copyBtn" aria-label="Copy to clipboard">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="copy-icon"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="check-icon" style="display:none"><polyline points="20 6 9 17 4 12"/></svg>
-            <span class="copy-text">Copy</span>
-          </button>
-        </div>
-        <div class="code-block-body">
-          <code>
-<span class="code-comment"># One-line install — clones, installs, and starts LaunchPad</span>
-<span class="code-command">curl</span> -fsSL https://raw.githubusercontent.com/vvrsh29/NTHSHAckathon/main/setup.sh | <span class="code-command">bash</span>
-          </code>
-        </div>
-      </div>
-
-      <details class="manual-install">
-        <summary>Manual install</summary>
-        <div class="code-block-wrapper" style="margin-top: 0.75rem;">
-          <div class="code-block-header">
-            <span class="code-block-title">terminal</span>
+      <div class="guided-steps">
+        <!-- Step 1 -->
+        <div class="guided-step">
+          <div class="guided-step-badge">1</div>
+          <div class="guided-step-content">
+            <h3>Open your terminal</h3>
+            <p>
+              <strong>Mac:</strong> Press <kbd>Cmd</kbd> + <kbd>Space</kbd>, type <strong>Terminal</strong>, hit Enter.<br />
+              <strong>Windows:</strong> Press <kbd>Win</kbd> + <kbd>R</kbd>, type <strong>cmd</strong>, hit Enter.<br />
+              <strong>Linux:</strong> Press <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd>.
+            </p>
+            <div class="guided-step-visual">
+              <div class="mini-terminal">
+                <div class="mini-terminal-dots">
+                  <span class="terminal-dot red"></span>
+                  <span class="terminal-dot yellow"></span>
+                  <span class="terminal-dot green"></span>
+                </div>
+                <div class="mini-terminal-body">
+                  <span class="prompt">~ $</span> <span class="cursor"></span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="code-block-body">
-            <code>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="guided-step">
+          <div class="guided-step-badge">2</div>
+          <div class="guided-step-content">
+            <h3>Paste this command</h3>
+            <p>Copy the command below and paste it into your terminal. It downloads LaunchPad, installs everything, and starts it up.</p>
+            <div class="code-block-wrapper">
+              <div class="code-block-header">
+                <span class="code-block-title">paste into your terminal</span>
+                <button class="copy-button" id="copyBtn" aria-label="Copy to clipboard">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="copy-icon"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="check-icon" style="display:none"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span class="copy-text">Copy</span>
+                </button>
+              </div>
+              <div class="code-block-body">
+                <code><span class="code-command">curl</span> -fsSL https://raw.githubusercontent.com/vvrsh29/NTHSHAckathon/main/setup.sh | <span class="code-command">bash</span></code>
+              </div>
+            </div>
+            <details class="manual-install">
+              <summary>Prefer to do it manually?</summary>
+              <div class="code-block-wrapper" style="margin-top: 0.75rem;">
+                <div class="code-block-header">
+                  <span class="code-block-title">manual steps</span>
+                </div>
+                <div class="code-block-body">
+                  <code>
 <span class="code-command">git clone</span> https://github.com/vvrsh29/NTHSHAckathon.git launchpad
 <span class="code-command">cd</span> launchpad
 <span class="code-command">npm install</span>
 <span class="code-command">npm run dev</span>
-            </code>
+                  </code>
+                </div>
+              </div>
+            </details>
           </div>
         </div>
-      </details>
 
-      <p class="get-started-note">
-        Then open <a href="http://localhost:3000">http://localhost:3000</a> in your browser. That's it.<br />
-        Requires <strong>Node.js 18+</strong> and an <strong>Anthropic API key</strong> (set as <code style="font-family: var(--font-mono); background: var(--zinc-800); padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.8125rem;">ANTHROPIC_API_KEY</code> env var).
-      </p>
-
-      <div class="steps-list">
-        <div class="step-item">
-          <div class="step-number">1</div>
-          <div class="step-text">
-            <h4>Clone & Install</h4>
-            <p>Pull the repo and install dependencies with npm. Takes about 30 seconds.</p>
-          </div>
-        </div>
-        <div class="step-item">
-          <div class="step-number">2</div>
-          <div class="step-text">
-            <h4>Set Your API Key</h4>
-            <p>Export your Anthropic API key as an environment variable, or enter it in the app during onboarding.</p>
-          </div>
-        </div>
-        <div class="step-item">
-          <div class="step-number">3</div>
-          <div class="step-text">
-            <h4>Start Learning</h4>
-            <p>Pick your track, follow the guided steps, and build something real with Claude Code.</p>
+        <!-- Step 3 -->
+        <div class="guided-step">
+          <div class="guided-step-badge">3</div>
+          <div class="guided-step-content">
+            <h3>Open in your browser</h3>
+            <p>Once it's running, open <a href="http://localhost:3000"><strong>localhost:3000</strong></a> in your browser. LaunchPad will walk you through everything from there — pick your course, set up your tools, and start building.</p>
           </div>
         </div>
       </div>
+
+      <p class="get-started-note">
+        Requires <strong>Node.js 18+</strong> and <strong>Git</strong>. An <strong>Anthropic API key</strong> is optional but recommended for the AI mentor — you can add it during onboarding.
+      </p>
     </div>
   </section>
 
