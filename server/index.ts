@@ -67,13 +67,20 @@ app.get('/api/env', async (_req, res) => {
   }
 })
 
-// Catch-all: in dev redirect to Vite, in prod serve index.html
-app.get('*', (_req, res) => {
-  const indexHtml = path.join(clientDist, 'index.html')
-  if (fs.existsSync(indexHtml)) {
-    res.sendFile(indexHtml)
+// SPA fallback — serve index.html for any non-API, non-WS route
+app.get('*', (req, res) => {
+  // Don't catch API or WebSocket upgrade requests
+  if (req.path.startsWith('/api') || req.path.startsWith('/ws')) {
+    return res.status(404).end()
+  }
+
+  const indexPath = path.join(clientDist, 'index.html')
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath)
   } else {
-    res.redirect('http://localhost:5173')
+    // Dev mode — Vite handles routing, redirect to Vite dev server
+    const viteUrl = `http://localhost:5173${req.originalUrl}`
+    res.redirect(viteUrl)
   }
 })
 
