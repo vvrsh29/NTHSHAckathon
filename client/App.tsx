@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Button } from '@/components/ui/button'
 import MentorPanel from './components/MentorPanel'
 import LandingPage from './components/LandingPage'
+import LoginScreen from './components/LoginScreen'
 import Onboarding from './components/Onboarding'
 import HomeScreen from './components/HomeScreen'
 import InterfaceGuide from './components/InterfaceGuide'
@@ -18,15 +19,26 @@ import { cn } from '@/lib/utils'
 import type { ServerMessage, CourseLevel, PhaseDefinition, Step, EnvDetectionResult } from '../shared/types'
 
 export default function App() {
-  const [screen, setScreen] = useState<'landing' | 'onboarding' | 'home' | 'dashboard'>('landing')
+  const [screen, setScreen] = useState<'landing' | 'login' | 'onboarding' | 'home' | 'dashboard'>(() => {
+    try {
+      const savedName = localStorage.getItem('launchpad-user-name')
+      const savedEmail = localStorage.getItem('launchpad-user-email')
+      if (savedName && savedEmail) return 'onboarding'
+    } catch {}
+    return 'landing'
+  })
   const [courseLevel, setCourseLevel] = useState<CourseLevel | null>(null)
-  const [userName, setUserName] = useState('')
+  const [userName, setUserName] = useState(() => {
+    try { return localStorage.getItem('launchpad-user-name') || '' } catch { return '' }
+  })
   const [userRole, setUserRole] = useState('')
   const [envResults, setEnvResults] = useState<EnvDetectionResult | null>(null)
   const [apiKey, setApiKey] = useState(() => {
     try { return localStorage.getItem('launchpad-anthropic-key') || '' } catch { return '' }
   })
   const [buildIdea, setBuildIdea] = useState('')
+  const [courseTopic, setCourseTopic] = useState('')
+  const [projectDir, setProjectDir] = useState('~/launchpad-projects')
   const [coursePhases, setCoursePhases] = useState<PhaseDefinition[]>([])
   const [currentStep, setCurrentStep] = useState<Step | null>(null)
   const [currentPhase, setCurrentPhase] = useState<string>('')
@@ -65,11 +77,13 @@ export default function App() {
   const { send, connected, addListener } = useWebSocket(handleMessage)
   const { messages, isThinking, startThinking } = useMentor(addListener)
 
-  const handleOnboardingComplete = useCallback((config: { level: CourseLevel; apiKey: string; buildIdea: string; userName: string; userRole: string }) => {
+  const handleOnboardingComplete = useCallback((config: { level: CourseLevel; apiKey: string; buildIdea: string; userName: string; userRole: string; projectDir: string; courseTopic: string }) => {
     setCourseLevel(config.level)
     setUserName(config.userName)
     setUserRole(config.userRole)
     setBuildIdea(config.buildIdea)
+    setCourseTopic(config.courseTopic)
+    setProjectDir(config.projectDir)
     if (config.apiKey) {
       setApiKey(config.apiKey)
       try { localStorage.setItem('launchpad-anthropic-key', config.apiKey) } catch {}
@@ -80,9 +94,9 @@ export default function App() {
   }, [send])
 
   const handleContinueLearning = useCallback(() => {
-    send({ type: 'select_course', level: courseLevel!, apiKey, buildIdea, userName, userRole })
+    send({ type: 'select_course', level: courseLevel!, apiKey, buildIdea, userName, userRole, projectDir, courseTopic })
     setScreen('dashboard')
-  }, [send, courseLevel, apiKey, buildIdea, userName, userRole])
+  }, [send, courseLevel, apiKey, buildIdea, userName, userRole, projectDir, courseTopic])
 
   useEffect(() => {
     document.body.classList.toggle('dashboard-active', screen === 'dashboard')
@@ -98,7 +112,22 @@ export default function App() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.25 }}
         >
-          <LandingPage onGetStarted={() => setScreen('onboarding')} />
+          <LandingPage onGetStarted={() => setScreen('login')} />
+        </motion.div>
+      )}
+
+      {screen === 'login' && (
+        <motion.div
+          key="login"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25 }}
+        >
+          <LoginScreen onSignIn={(name) => {
+            setUserName(name)
+            setScreen('onboarding')
+          }} />
         </motion.div>
       )}
 
@@ -110,7 +139,7 @@ export default function App() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
         >
-          <Onboarding onComplete={handleOnboardingComplete} onBack={() => setScreen('landing')} />
+          <Onboarding onComplete={handleOnboardingComplete} onBack={() => setScreen('login')} />
         </motion.div>
       )}
 

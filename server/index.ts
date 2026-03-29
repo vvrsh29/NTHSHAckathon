@@ -164,10 +164,28 @@ wss.on('connection', (ws: WebSocket) => {
         case 'select_course': {
           ;(async () => {
             try {
+              // Resolve project directory from client, with validation
+              let resolvedProjectDir = PROJECT_DIR
+              if (msg.projectDir && msg.projectDir.trim()) {
+                let pd = msg.projectDir.trim()
+                // Expand ~ to HOME
+                if (pd.startsWith('~')) {
+                  pd = pd.replace(/^~/, process.env.HOME || '')
+                }
+                // Block path traversal
+                if (!pd.includes('..')) {
+                  resolvedProjectDir = pd
+                }
+              }
+              // Ensure project dir exists
+              if (!fs.existsSync(resolvedProjectDir)) {
+                fs.mkdirSync(resolvedProjectDir, { recursive: true })
+              }
+
               const env = await detectEnvironment()
               send(ws, { type: 'env_detection', results: env })
 
-              const phases = loadCourse(msg.level, env)
+              const phases = loadCourse(msg.level, env, msg.courseTopic)
               send(ws, { type: 'course_started', level: msg.level, phases })
 
               if (msg.apiKey) {

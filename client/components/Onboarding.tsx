@@ -13,13 +13,48 @@ import {
   ExternalLink,
   User,
   Loader2,
+  FolderOpen,
+  Globe,
+  ListTodo,
+  Cloud,
+  Terminal,
+  Server,
+  FileText,
+  Layers,
+  Chrome,
+  Bot,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { CourseLevel, EnvDetectionResult } from '../../shared/types'
 
+interface TopicOption {
+  value: string
+  icon: typeof Sparkles
+  title: string
+  description: string
+}
+
+const TOPICS_BY_LEVEL: Record<CourseLevel, TopicOption[]> = {
+  beginner: [
+    { value: 'portfolio-site', icon: Globe, title: 'Portfolio Site', description: 'Build a personal portfolio website' },
+    { value: 'todo-app', icon: ListTodo, title: 'Todo App', description: 'Build a task manager app' },
+    { value: 'weather-page', icon: Cloud, title: 'Weather Page', description: 'Build a weather dashboard' },
+  ],
+  intermediate: [
+    { value: 'cli-tool', icon: Terminal, title: 'CLI Tool', description: 'Build a command-line utility' },
+    { value: 'rest-api', icon: Server, title: 'REST API', description: 'Build a backend API with Express' },
+    { value: 'markdown-blog', icon: FileText, title: 'Markdown Blog', description: 'Build a static blog generator' },
+  ],
+  advanced: [
+    { value: 'full-stack-app', icon: Layers, title: 'Full-Stack App', description: 'Build a complete web app' },
+    { value: 'chrome-extension', icon: Chrome, title: 'Chrome Extension', description: 'Build a browser extension' },
+    { value: 'discord-bot', icon: Bot, title: 'Discord Bot', description: 'Build an automated bot' },
+  ],
+}
+
 interface Props {
-  onComplete: (config: { level: CourseLevel; apiKey: string; buildIdea: string; userName: string; userRole: string }) => void
+  onComplete: (config: { level: CourseLevel; apiKey: string; buildIdea: string; userName: string; userRole: string; projectDir: string; courseTopic: string }) => void
   onBack: () => void
 }
 
@@ -72,11 +107,13 @@ const QUICK_PICKS = ['Todo App', 'Portfolio Site', 'Weather App', 'Chat Bot']
 
 const ROLES = ['Student', 'Professional', 'Hobbyist', 'Curious']
 
-const TOTAL_STAGES = 6 // 0-5; stage 5 only for beginners
+// Stages: 0=Welcome, 1=AboutYou, 2=Level, 3=Topic, 4=EnvCheck, 5=ProjectDir, 6=ApiKey, 7=BuildIdea(beginner only)
+const TOTAL_STAGES = 8
 
 export default function Onboarding({ onComplete, onBack }: Props) {
   const [stage, setStage] = useState(0)
   const [level, setLevel] = useState<CourseLevel | null>(null)
+  const [courseTopic, setCourseTopic] = useState('')
   const [userName, setUserName] = useState('')
   const [userRole, setUserRole] = useState('')
   const [envResults, setEnvResults] = useState<EnvDetectionResult | null>(null)
@@ -88,6 +125,7 @@ export default function Onboarding({ onComplete, onBack }: Props) {
       return ''
     }
   })
+  const [projectDir, setProjectDir] = useState('~/launchpad-projects')
   const [buildIdea, setBuildIdea] = useState('')
   const [skippedKey, setSkippedKey] = useState(false)
 
@@ -99,21 +137,26 @@ export default function Onboarding({ onComplete, onBack }: Props) {
   }
 
   const finish = (idea: string = buildIdea) => {
-    onComplete({ level: level!, apiKey: apiKey.trim(), buildIdea: idea.trim(), userName: userName.trim(), userRole })
+    onComplete({ level: level!, apiKey: apiKey.trim(), buildIdea: idea.trim(), userName: userName.trim(), userRole, projectDir: projectDir.trim() || '~/launchpad-projects', courseTopic })
   }
 
-  // After stage 4 (API Key), non-beginners skip stage 5 (build idea)
+  // After stage 6 (API Key), non-beginners skip stage 7 (build idea)
   const handleContinueFromApiKey = () => {
     if (level === 'beginner') {
-      setStage(5)
+      setStage(7)
     } else {
       finish('')
     }
   }
 
-  // Fetch env detection when entering stage 3
+  // Reset topic when level changes
   useEffect(() => {
-    if (stage === 3 && !envResults) {
+    setCourseTopic('')
+  }, [level])
+
+  // Fetch env detection when entering stage 4
+  useEffect(() => {
+    if (stage === 4 && !envResults) {
       setEnvLoading(true)
       fetch('/api/env')
         .then(r => r.json())
@@ -122,7 +165,7 @@ export default function Onboarding({ onComplete, onBack }: Props) {
     }
   }, [stage, envResults])
 
-  // How many stages are visible for this level
+  // How many stages are visible for this level (stage 7 is beginner-only)
   const visibleStages = level === 'beginner' ? TOTAL_STAGES : TOTAL_STAGES - 1
 
   // Slide animation
@@ -371,10 +414,76 @@ export default function Onboarding({ onComplete, onBack }: Props) {
             </motion.div>
           )}
 
-          {/* ── Stage 3: Environment Check ── */}
-          {stage === 3 && (
+          {/* ── Stage 3: Topic Picker ── */}
+          {stage === 3 && level && (
             <motion.div
               key="stage-3"
+              variants={slideVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.35, ease: 'easeInOut' }}
+              className="max-w-2xl w-full space-y-8"
+            >
+              <div className="text-center space-y-2">
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                  What do you want to build?
+                </h2>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Pick a project topic. This shapes your hands-on exercises.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {TOPICS_BY_LEVEL[level].map(({ value, icon: Icon, title, description }) => (
+                  <button
+                    key={value}
+                    onClick={() => setCourseTopic(value)}
+                    className={cn(
+                      'text-left rounded-xl border p-5 transition-all duration-200 space-y-3 hover:border-foreground/40',
+                      courseTopic === value
+                        ? 'border-foreground bg-accent'
+                        : 'bg-background border-border'
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={cn(
+                          'flex items-center justify-center w-9 h-9 rounded-lg transition-colors',
+                          courseTopic === value ? 'bg-foreground' : 'bg-muted'
+                        )}
+                      >
+                        <Icon
+                          className={cn(
+                            'w-4 h-4 transition-colors',
+                            courseTopic === value ? 'text-background' : 'text-muted-foreground'
+                          )}
+                        />
+                      </div>
+                      <span className="font-semibold text-sm">{title}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex justify-center">
+                <Button
+                  size="lg"
+                  onClick={() => setStage(4)}
+                  disabled={!courseTopic}
+                  className="gap-2 px-8"
+                >
+                  Continue <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── Stage 4: Environment Check ── */}
+          {stage === 4 && (
+            <motion.div
+              key="stage-4"
               variants={slideVariants}
               initial="initial"
               animate="animate"
@@ -444,7 +553,7 @@ export default function Onboarding({ onComplete, onBack }: Props) {
               <div className="flex justify-center">
                 <Button
                   size="lg"
-                  onClick={() => setStage(4)}
+                  onClick={() => setStage(5)}
                   className="gap-2 px-8"
                 >
                   Continue <ArrowRight className="w-4 h-4" />
@@ -453,10 +562,63 @@ export default function Onboarding({ onComplete, onBack }: Props) {
             </motion.div>
           )}
 
-          {/* ── Stage 4: API Key ── */}
-          {stage === 4 && (
+          {/* ── Stage 5: Project Directory ── */}
+          {stage === 5 && (
             <motion.div
-              key="stage-4"
+              key="stage-5"
+              variants={slideVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.35, ease: 'easeInOut' }}
+              className="max-w-md w-full space-y-8"
+            >
+              <div className="text-center space-y-2">
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                  Project directory
+                </h2>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Where should we create your project files?
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="relative">
+                  <FolderOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={projectDir}
+                    onChange={(e) => setProjectDir(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && projectDir.trim()) setStage(6)
+                    }}
+                    placeholder="~/launchpad-projects"
+                    className="w-full h-11 pl-10 pr-4 text-sm font-mono bg-background border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition"
+                    autoFocus
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  We'll create this folder if it doesn't exist. Use an absolute path or start with <code className="text-[11px] bg-muted px-1 py-0.5 rounded">~</code> for your home directory.
+                </p>
+              </div>
+
+              <div className="flex justify-center">
+                <Button
+                  size="lg"
+                  onClick={() => setStage(6)}
+                  disabled={!projectDir.trim()}
+                  className="gap-2 px-8"
+                >
+                  Continue <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── Stage 6: API Key ── */}
+          {stage === 6 && (
+            <motion.div
+              key="stage-6"
               variants={slideVariants}
               initial="initial"
               animate="animate"
@@ -548,10 +710,10 @@ export default function Onboarding({ onComplete, onBack }: Props) {
             </motion.div>
           )}
 
-          {/* ── Stage 5: What to Build (Beginner only) ── */}
-          {stage === 5 && (
+          {/* ── Stage 7: What to Build (Beginner only) ── */}
+          {stage === 7 && (
             <motion.div
-              key="stage-5"
+              key="stage-7"
               variants={slideVariants}
               initial="initial"
               animate="animate"

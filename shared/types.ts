@@ -6,6 +6,8 @@
 
 export type CourseLevel = 'beginner' | 'intermediate' | 'advanced'
 
+export type CourseTopic = string
+
 // Phase is a string — phases differ per course level
 export type Phase = string
 
@@ -39,7 +41,7 @@ export interface EnvDetectionResult {
 // --- Client → Server ---
 
 export type ClientMessage =
-  | { type: 'select_course'; level: CourseLevel; apiKey?: string; buildIdea?: string; userName?: string; userRole?: string }
+  | { type: 'select_course'; level: CourseLevel; apiKey?: string; buildIdea?: string; userName?: string; userRole?: string; projectDir?: string; courseTopic?: string }
   | { type: 'set_api_key'; apiKey: string }
   | { type: 'pty_input'; data: string }
   | { type: 'pty_resize'; cols: number; rows: number }
