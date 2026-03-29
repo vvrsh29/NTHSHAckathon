@@ -1,6 +1,6 @@
 import type { CourseLevel, EnvDetectionResult, PhaseDefinition } from '../../shared/types.js'
 
-// Import course phase definitions (stub exports — course content will be created by another agent)
+// Import course phase definitions
 import { getTerminalBasicsPhase } from './beginner/terminal-basics.js'
 import { getEnvSetupPhase } from './beginner/environment-setup.js'
 import { getVscodePhase } from './beginner/vscode-basics.js'
