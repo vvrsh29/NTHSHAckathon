@@ -198,20 +198,28 @@
         </div>
         <div class="code-block-body">
           <code>
-<span class="code-comment"># Clone the repository</span>
-<span class="code-command">git clone</span> https://github.com/vvrsh29/NTHSHAckathon.git launchpad
-
-<span class="code-comment"># Navigate into the project</span>
-<span class="code-command">cd</span> launchpad
-
-<span class="code-comment"># Install dependencies</span>
-<span class="code-command">npm install</span>
-
-<span class="code-comment"># Start the app</span>
-<span class="code-command">npm run dev</span>
+<span class="code-comment"># One-line install — clones, installs, and starts LaunchPad</span>
+<span class="code-command">curl</span> -fsSL https://raw.githubusercontent.com/vvrsh29/NTHSHAckathon/main/setup.sh | <span class="code-command">bash</span>
           </code>
         </div>
       </div>
+
+      <details class="manual-install">
+        <summary>Manual install</summary>
+        <div class="code-block-wrapper" style="margin-top: 0.75rem;">
+          <div class="code-block-header">
+            <span class="code-block-title">terminal</span>
+          </div>
+          <div class="code-block-body">
+            <code>
+<span class="code-command">git clone</span> https://github.com/vvrsh29/NTHSHAckathon.git launchpad
+<span class="code-command">cd</span> launchpad
+<span class="code-command">npm install</span>
+<span class="code-command">npm run dev</span>
+            </code>
+          </div>
+        </div>
+      </details>
 
       <p class="get-started-note">
         Then open <a href="http://localhost:3000">http://localhost:3000</a> in your browser. That's it.<br />
@@ -263,12 +271,7 @@
       var btn = document.getElementById('copyBtn');
       if (!btn) return;
 
-      var commands = [
-        'git clone https://github.com/vvrsh29/NTHSHAckathon.git launchpad',
-        'cd launchpad',
-        'npm install',
-        'npm run dev'
-      ].join('\n');
+      var commands = 'curl -fsSL https://raw.githubusercontent.com/vvrsh29/NTHSHAckathon/main/setup.sh | bash';
 
       btn.addEventListener('click', function () {
         navigator.clipboard.writeText(commands).then(function () {

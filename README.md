@@ -17,7 +17,15 @@ LaunchPad wraps a real terminal in a two-panel browser UI. You type real command
 
 ## Quick Start
 
+**One-line install:**
 ```bash
+curl -fsSL https://raw.githubusercontent.com/vvrsh29/NTHSHAckathon/main/setup.sh | bash
+```
+
+**Or manual install:**
+```bash
+git clone https://github.com/vvrsh29/NTHSHAckathon.git launchpad
+cd launchpad
 npm install
 npm run dev
 ```

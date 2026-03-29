@@ -714,6 +714,24 @@ img {
   color: var(--emerald-400);
 }
 
+/* Manual install collapsible */
+.manual-install {
+  margin-top: 1rem;
+}
+
+.manual-install summary {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  color: var(--zinc-500);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s;
+}
+
+.manual-install summary:hover {
+  color: var(--zinc-300);
+}
+
 .get-started-note {
   font-size: 0.875rem;
   color: var(--zinc-500);
