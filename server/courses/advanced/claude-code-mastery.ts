@@ -1,6 +1,17 @@
 import type { PhaseDefinition } from '../../../shared/types.js'
 
-export function getAdvancedCoursePhases(): PhaseDefinition[] {
+const TOPIC_LABELS: Record<string, string> = {
+  'full-stack-app': 'a full-stack web application',
+  'chrome-extension': 'a Chrome browser extension',
+  'discord-bot': 'a Discord bot',
+}
+
+export function getAdvancedCoursePhases(topic?: string): PhaseDefinition[] {
+  const topicLabel = TOPIC_LABELS[topic || '']
+  const topicMention = topicLabel
+    ? ` Throughout this course, we'll use examples geared toward building ${topicLabel} — but these techniques apply to any project.`
+    : ''
+
   return [
     {
       id: 'claude-md',
@@ -12,7 +23,7 @@ export function getAdvancedCoursePhases(): PhaseDefinition[] {
           phase: 'claude-md',
           title: 'What is CLAUDE.md?',
           explanation:
-            'CLAUDE.md is a file Claude Code reads automatically. Put project rules, architecture notes, and coding style preferences in it. Think of it as instructions for your AI pair programmer.',
+            `CLAUDE.md is a file Claude Code reads automatically. Put project rules, architecture notes, and coding style preferences in it. Think of it as instructions for your AI pair programmer.${topicMention}`,
         },
         {
           id: 'create-claude-md',

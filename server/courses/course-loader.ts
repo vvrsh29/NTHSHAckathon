@@ -13,7 +13,7 @@ import { getIntermediateProjectPhase } from './intermediate/first-project.js'
 import { getTipsPhase } from './intermediate/tips.js'
 import { getAdvancedCoursePhases } from './advanced/claude-code-mastery.js'
 
-export function loadCourse(level: CourseLevel, env: EnvDetectionResult): PhaseDefinition[] {
+export function loadCourse(level: CourseLevel, env: EnvDetectionResult, topic?: string): PhaseDefinition[] {
   switch (level) {
     case 'beginner':
       return [
@@ -21,17 +21,17 @@ export function loadCourse(level: CourseLevel, env: EnvDetectionResult): PhaseDe
         getEnvSetupPhase(env),
         getVscodePhase(env),
         getInstallClaudeCodePhase(env),
-        getFirstProjectPhase(),
+        getFirstProjectPhase(topic),
         getCelebrationPhase(),
       ]
     case 'intermediate':
       return [
         getEnvCheckPhase(env),
         getIntermediateClaudeCodePhase(env),
-        getIntermediateProjectPhase(),
+        getIntermediateProjectPhase(topic),
         getTipsPhase(),
       ]
     case 'advanced':
-      return getAdvancedCoursePhases()
+      return getAdvancedCoursePhases(topic)
   }
 }
