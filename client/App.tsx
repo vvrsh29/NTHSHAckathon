@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useWebSocket } from './hooks/useWebSocket'
 import { useMentor } from './hooks/useMentor'
@@ -19,15 +20,10 @@ import { Rocket, TerminalSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ServerMessage, CourseLevel, PhaseDefinition, Step, EnvDetectionResult } from '../shared/types'
 
-export default function App() {
-  const [screen, setScreen] = useState<'landing' | 'login' | 'onboarding' | 'home' | 'dashboard' | 'complete'>(() => {
-    try {
-      const savedName = localStorage.getItem('launchpad-user-name')
-      const savedEmail = localStorage.getItem('launchpad-user-email')
-      if (savedName && savedEmail) return 'onboarding'
-    } catch {}
-    return 'landing'
-  })
+function AppRoutes() {
+  const navigate = useNavigate()
+  const location = useLocation()
+
   const [courseLevel, setCourseLevel] = useState<CourseLevel | null>(null)
   const [userName, setUserName] = useState(() => {
     try { return localStorage.getItem('launchpad-user-name') || '' } catch { return '' }
@@ -72,11 +68,11 @@ export default function App() {
         setEnvResults(msg.results)
         break
       case 'course_complete':
-        setScreen('complete')
+        navigate('/complete')
         break
       // phase_complete handled by MentorPanel / listeners
     }
-  }, [])
+  }, [navigate])
 
   const { send, connected, addListener } = useWebSocket(handleMessage)
   const { messages, isThinking, startThinking } = useMentor(addListener)
@@ -94,179 +90,201 @@ export default function App() {
       send({ type: 'set_api_key', apiKey: config.apiKey })
     }
     // Store config for when user clicks "Continue" on home screen
-    setScreen('home')
-  }, [send])
+    navigate('/home')
+  }, [send, navigate])
 
   const handleContinueLearning = useCallback(() => {
     send({ type: 'select_course', level: courseLevel!, apiKey, buildIdea, userName, userRole, projectDir, courseTopic })
-    setScreen('dashboard')
-  }, [send, courseLevel, apiKey, buildIdea, userName, userRole, projectDir, courseTopic])
+    navigate('/course')
+  }, [send, courseLevel, apiKey, buildIdea, userName, userRole, projectDir, courseTopic, navigate])
+
+  // Auto-redirect on mount if user is already logged in
+  useEffect(() => {
+    try {
+      const savedName = localStorage.getItem('launchpad-user-name')
+      const savedEmail = localStorage.getItem('launchpad-user-email')
+      if (savedName && savedEmail && location.pathname === '/') {
+        navigate('/onboarding', { replace: true })
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
-    document.body.classList.toggle('dashboard-active', screen === 'dashboard')
-  }, [screen])
+    document.body.classList.toggle('dashboard-active', location.pathname === '/course')
+  }, [location.pathname])
 
   return (
     <AnimatePresence mode="wait">
-      {screen === 'landing' && (
-        <motion.div
-          key="landing"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.25 }}
-        >
-          <LandingPage onGetStarted={() => setScreen('login')} />
-        </motion.div>
-      )}
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={
+          <motion.div
+            key="landing"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+          >
+            <LandingPage onGetStarted={() => navigate('/login')} />
+          </motion.div>
+        } />
 
-      {screen === 'login' && (
-        <motion.div
-          key="login"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.25 }}
-        >
-          <LoginScreen onSignIn={(name) => {
-            setUserName(name)
-            setScreen('onboarding')
-          }} />
-        </motion.div>
-      )}
+        <Route path="/login" element={
+          <motion.div
+            key="login"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+          >
+            <LoginScreen onSignIn={(name) => {
+              setUserName(name)
+              navigate('/onboarding')
+            }} />
+          </motion.div>
+        } />
 
-      {screen === 'onboarding' && (
-        <motion.div
-          key="onboarding"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          <Onboarding onComplete={handleOnboardingComplete} onBack={() => setScreen('login')} />
-        </motion.div>
-      )}
+        <Route path="/onboarding" element={
+          <motion.div
+            key="onboarding"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Onboarding onComplete={handleOnboardingComplete} onBack={() => navigate('/login')} />
+          </motion.div>
+        } />
 
-      {screen === 'home' && (
-        <motion.div
-          key="home"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          <HomeScreen
-            userName={userName}
-            courseLevel={courseLevel}
-            coursePhases={coursePhases}
-            currentPhase={currentPhase}
-            stepIndex={stepIndex}
-            envResults={envResults}
-            onContinue={handleContinueLearning}
-            onChangeCourse={() => setScreen('onboarding')}
-          />
-        </motion.div>
-      )}
+        <Route path="/home" element={
+          <motion.div
+            key="home"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <HomeScreen
+              userName={userName}
+              courseLevel={courseLevel}
+              coursePhases={coursePhases}
+              currentPhase={currentPhase}
+              stepIndex={stepIndex}
+              envResults={envResults}
+              onContinue={handleContinueLearning}
+              onChangeCourse={() => navigate('/onboarding')}
+            />
+          </motion.div>
+        } />
 
-      {screen === 'dashboard' && (
-        <motion.div
-          key="dashboard"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.2 }}
-          className="h-screen"
-        >
-          <div className="h-screen flex flex-col bg-background text-foreground">
-            {/* Header */}
-            <header className="h-14 border-b flex items-center justify-between px-4 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <button onClick={() => setScreen('home')} className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
-                  <div className="flex items-center justify-center w-7 h-7 rounded-md bg-foreground">
-                    <Rocket className="w-3.5 h-3.5 text-background" />
-                  </div>
-                  <span className="text-base font-semibold">LaunchPad</span>
-                </button>
-                {/* WS status dot */}
-                <div className={cn('w-1.5 h-1.5 rounded-full', connected ? 'bg-emerald-500' : 'bg-amber-500')} />
-                {/* PTY/SSH status */}
-                <span className="text-[10px] text-muted-foreground">
-                  {ptyReady ? 'Terminal ready' : sshConnected ? 'SSH connected' : 'Starting terminal...'}
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <TooltipProvider delayDuration={300}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => {
-                        navigator.clipboard.writeText('ssh localhost -p 2222')
-                      }}>
-                        <TerminalSquare className="w-3 h-3" />
-                        SSH
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>ssh localhost -p 2222 (copied!)</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <ModeSwitch send={send} />
-                <StepIndicator
-                  phases={coursePhases.map(p => ({ id: p.id, label: p.title || p.id }))}
-                  currentPhase={currentPhase}
-                  stepIndex={stepIndex}
-                />
-              </div>
-            </header>
-
-            {/* Interface guide overlay */}
-            <InterfaceGuide />
-
-            {/* Two panels */}
-            <div className="flex-1 min-h-0">
-              <ResizablePanelGroup direction="horizontal" className="h-full">
-                <ResizablePanel defaultSize={55} minSize={35}>
-                  <div className="h-full flex flex-col">
-                    <div className="h-8 border-b flex items-center px-3 gap-2">
-                      <TerminalSquare className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Terminal</span>
+        <Route path="/course" element={
+          <motion.div
+            key="dashboard"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
+            className="h-screen"
+          >
+            <div className="h-screen flex flex-col bg-background text-foreground">
+              {/* Header */}
+              <header className="h-14 border-b flex items-center justify-between px-4 flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  <button onClick={() => navigate('/home')} className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+                    <div className="flex items-center justify-center w-7 h-7 rounded-md bg-foreground">
+                      <Rocket className="w-3.5 h-3.5 text-background" />
                     </div>
-                    <div className="flex-1 min-h-0">
-                      <XTerminal send={send} addListener={addListener} />
-                    </div>
-                  </div>
-                </ResizablePanel>
-
-                <ResizableHandle />
-
-                <ResizablePanel defaultSize={45} minSize={28}>
-                  <MentorPanel
-                    send={send}
-                    addListener={addListener}
-                    currentStep={currentStep}
-                    commandSuggestion={commandSuggestion}
-                    messages={messages}
-                    isThinking={isThinking}
-                    onStartThinking={startThinking}
+                    <span className="text-base font-semibold">LaunchPad</span>
+                  </button>
+                  {/* WS status dot */}
+                  <div className={cn('w-1.5 h-1.5 rounded-full', connected ? 'bg-emerald-500' : 'bg-amber-500')} />
+                  {/* PTY/SSH status */}
+                  <span className="text-[10px] text-muted-foreground">
+                    {ptyReady ? 'Terminal ready' : sshConnected ? 'SSH connected' : 'Starting terminal...'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <TooltipProvider delayDuration={300}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => {
+                          navigator.clipboard.writeText('ssh localhost -p 2222')
+                        }}>
+                          <TerminalSquare className="w-3 h-3" />
+                          SSH
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>ssh localhost -p 2222 (copied!)</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <ModeSwitch send={send} />
+                  <StepIndicator
+                    phases={coursePhases.map(p => ({ id: p.id, label: p.title || p.id }))}
+                    currentPhase={currentPhase}
+                    stepIndex={stepIndex}
                   />
-                </ResizablePanel>
-              </ResizablePanelGroup>
-            </div>
-          </div>
-        </motion.div>
-      )}
+                </div>
+              </header>
 
-      {screen === 'complete' && (
-        <motion.div
-          key="complete"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <CompletionScreen
-            userName={userName}
-            onGoHome={() => setScreen('home')}
-          />
-        </motion.div>
-      )}
+              {/* Interface guide overlay */}
+              <InterfaceGuide />
+
+              {/* Two panels */}
+              <div className="flex-1 min-h-0">
+                <ResizablePanelGroup direction="horizontal" className="h-full">
+                  <ResizablePanel defaultSize={55} minSize={35}>
+                    <div className="h-full flex flex-col">
+                      <div className="h-8 border-b flex items-center px-3 gap-2">
+                        <TerminalSquare className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Terminal</span>
+                      </div>
+                      <div className="flex-1 min-h-0">
+                        <XTerminal send={send} addListener={addListener} />
+                      </div>
+                    </div>
+                  </ResizablePanel>
+
+                  <ResizableHandle />
+
+                  <ResizablePanel defaultSize={45} minSize={28}>
+                    <MentorPanel
+                      send={send}
+                      addListener={addListener}
+                      currentStep={currentStep}
+                      commandSuggestion={commandSuggestion}
+                      messages={messages}
+                      isThinking={isThinking}
+                      onStartThinking={startThinking}
+                    />
+                  </ResizablePanel>
+                </ResizablePanelGroup>
+              </div>
+            </div>
+          </motion.div>
+        } />
+
+        <Route path="/complete" element={
+          <motion.div
+            key="complete"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <CompletionScreen
+              userName={userName}
+              onGoHome={() => navigate('/home')}
+            />
+          </motion.div>
+        } />
+      </Routes>
     </AnimatePresence>
+  )
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
   )
 }
